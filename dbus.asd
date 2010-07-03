@@ -7,7 +7,8 @@
 ;;; -*- Mode: LISP; Syntax: COMMON-LISP; Package: CL-USER; Base: 10 -*-
 
 (asdf:defsystem #:dbus
-  :depends-on (#:alexandria)
+  :depends-on (#:alexandria #:babel #:iolib)
   :serial t
   :components
-  ((:file "packages")))
+  ((:file "packages")
+   (:file "dbus")))
