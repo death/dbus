@@ -43,20 +43,95 @@ evaluated, and its value is returned."
   (format t "Enter an expression to yield a value: ")
   (multiple-value-list (eval (read))))
 
+(define-condition entry-replacement-attempt (dbus-error)
+  ((old :initarg :old :reader entry-replacement-attempt-old)
+   (new :initarg :new :reader entry-replacement-attempt-new))
+  (:report (lambda (condition stream)
+             (format stream "Attempted to replace ~S by ~S."
+                     (entry-replacement-attempt-old condition)
+                     (entry-replacement-attempt-new condition)))))
+
+(defun replace-entry-p (old new if-exists)
+  "Return true if the new entry should replace the old one.
+
+IF-EXISTS determines how to find out:
+
+  :ERROR - signal an ENTRY-ALREADY-EXISTS error with a CONTINUE
+           restart to replace the entry, and an ABORT restart to not
+           replace it.
+
+  :WARN - replace the entry after signaling a warning.
+
+  :DONT-REPLACE - don't replace entry.
+
+  :REPLACE - replace entry."
+  (flet ((replace-it () (return-from replace-entry-p t))
+         (dont-replace-it () (return-from replace-entry-p nil)))
+    (ecase if-exists
+      (:error
+       (restart-case (error 'entry-replacement-attempt :old old :new new)
+         (continue ()
+           :report "Replace old entry."
+           (replace-it))
+         (abort ()
+           :report "Don't replace old entry."
+           (dont-replace-it))))
+      (:warn
+       (warn "Replacing existing entry ~S with ~S." old new)
+       (replace-it))
+      (:dont-replace
+       (dont-replace-it))
+      (:replace
+       (replace-it)))))
+
 
 ;;;; Server addresses
 
 (defclass server-address ()
-  ((transport-name :initarg :type :reader server-address-transport-name)
-   (properties :initarg :properties :reader server-address-properties))
+  ()
   (:documentation "Represents a DBUS server address, consisting of a
 transport name and zero or more properties."))
 
-(defun server-address-property (name server-address &key (if-does-not-exist :error))
-  "Return the value of the server address's property with the supplied
-name."
+(defgeneric server-address-transport-name (server-address)
+  (:documentation "Return the canonical transport name for the server
+address."))
+
+(defgeneric server-address-property (name server-address &key if-does-not-exist)
+  (:documentation "Return the value of the server address's property
+with the supplied name."))
+
+(defclass standard-server-address (server-address)
+  ((transport-name :initarg :transport-name :reader server-address-transport-name)
+   (properties :initarg :properties :reader server-address-properties))
+  (:documentation "Represents a standard server address with a table
+of properties."))
+
+(defmethod server-address-property (name (server-address standard-server-address)
+                                    &key (if-does-not-exist :error))
   (or (gethash name (server-address-properties server-address))
       (inexistent-entry name if-does-not-exist)))
+
+(defclass generic-server-address (standard-server-address)
+  ()
+  (:documentation "Represents a server address whose transport is not
+supported by the DBUS system."))
+
+(defvar *server-address-classes*
+  (make-hash-table :test 'equal)
+  "Map transport names to server address classes or class names.")
+
+(defun find-server-address-class (name &key (if-does-not-exist :error))
+  "Return the server address class (or class name) corresponding to
+NAME."
+  (or (gethash name *server-address-classes*)
+      (inexistent-entry name if-does-not-exist)))
+
+(defun (setf find-server-address-class) (class name &key (if-exists :warn))
+  "Associate a server address class (or class name) with NAME."
+  (when-let (old (find-server-address-class name :if-does-not-exist nil))
+    (when (not (replace-entry-p old class if-exists))
+      (return-from find-server-address-class nil)))
+  (setf (gethash name *server-address-classes*) class))
 
 (defun parse-server-addresses-from-stream (in)
   "Parse unescaped server addresses text from a character stream and
@@ -84,8 +159,9 @@ return a list of server addresses."
                  (destructuring-bind (type &rest plist)
                      (nreverse current-server-address)
                    (push (make-instance
-                          'server-address
-                          :type type
+                          (or (find-server-address-class type :if-does-not-exist nil)
+                              'generic-server-address)
+                          :transport-name type
                           :properties (plist-hash-table plist :test 'equal))
                          server-addresses))
                  (setf current-server-address '())))
