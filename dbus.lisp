@@ -138,7 +138,6 @@ NAME."
 return a list of server addresses."
   (let ((server-addresses '())
         (token (make-string-output-stream))
-        (state :transport)
         (current-server-address '())
         (char nil))
     (labels ((consume ()
@@ -167,22 +166,21 @@ return a list of server addresses."
                  (setf current-server-address '())))
              (add-to-token ()
                (write-char char token)))
-      (loop
-       (ecase state
-         (:transport
-          (case (consume)
-            (#\: (finish-token) (setf state :key))
-            (t (add-to-token))))
-         (:key
-          (case (consume)
-            (#\; (finish-token t) (finish-server-address) (setf state :transport))
-            (#\= (finish-token) (setf state :value))
-            (t (add-to-token))))
-         (:value
-          (case (consume)
-            (#\,(finish-token) (setf state :key))
-            (#\; (finish-token) (finish-server-address) (setf state :transport))
-            (t (add-to-token)))))))))
+      (tagbody
+       transport
+         (case (consume)
+           (#\: (finish-token) (go key))
+           (t (add-to-token) (go transport)))
+       key
+         (case (consume)
+           (#\; (finish-token t) (finish-server-address) (go transport))
+           (#\= (finish-token) (go value))
+           (t (add-to-token) (go key)))
+       value
+         (case (consume)
+           (#\, (finish-token) (go key))
+           (#\; (finish-token) (finish-server-address) (go transport))
+           (t (add-to-token) (go value)))))))
 
 (defun unescape-server-addresses-string (string)
   "Unescape a server addresses string per the DBUS specification's
