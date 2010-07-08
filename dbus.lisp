@@ -486,3 +486,57 @@ return the argument; otherwise, signal an authentication error."
                  'generic-authentication-mechanism)
              :name name))
           (receive-authentication-response connection :expect :rejected)))
+
+
+;;;; Unix Domain Sockets
+
+(defclass unix-server-address (standard-server-address)
+  ((socket-address :reader server-address-socket-address))
+  (:documentation "Represents a DBUS server address with Unix Domain
+Sockets for transport."))
+
+(setf (find-server-address-class "unix") 'unix-server-address)
+
+(defmethod shared-initialize :after ((address unix-server-address) slot-names &rest initargs)
+  (declare (ignore initargs slot-names))
+  (let ((abstract (server-address-property "abstract" address :if-does-not-exist nil))
+        (path (server-address-property "path" address :if-does-not-exist nil)))
+    (with-slots (socket-address) address
+      (setf socket-address
+            (iolib:ensure-address (or abstract path)
+                                  :family :local
+                                  :abstract (if abstract t nil))))))
+
+(defclass unix-connection (standard-connection)
+  ((socket :initarg :socket :reader connection-socket))
+  (:documentation "Represents a connection to a DBUS server over Unix
+Domain Sockets."))
+
+(defmethod open-connection ((address unix-server-address) &key (if-failed :error))
+  (declare (ignore if-failed))
+  (let ((socket (iolib:make-socket :address-family :local
+                                   :external-format '(:utf-8 :eol-style :crlf))))
+    (unwind-protect
+         (prog1
+             (make-instance 'unix-connection
+                            :socket socket
+                            :server-address address
+                            :uuid (server-address-property "guid" address :if-does-not-exist nil))
+           (iolib:connect socket (server-address-socket-address address))
+           (setf socket nil))
+      (when socket
+        (close socket)))))
+
+(defmethod close-connection ((connection unix-connection))
+  (close (connection-socket connection)))
+
+(defmethod send-nul-byte ((connection unix-connection))
+  (write-byte 0 (connection-socket connection))
+  (force-output (connection-socket connection)))
+
+(defmethod send-line (line (connection unix-connection))
+  (write-line line (connection-socket connection))
+  (force-output (connection-socket connection)))
+
+(defmethod receive-line ((connection unix-connection))
+  (read-line (connection-socket connection)))

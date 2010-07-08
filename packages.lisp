@@ -39,4 +39,6 @@
    #:authentication-error-command
    #:authentication-error-argument
    #:receive-authentication-response
-   #:send-authentication-command))
+   #:send-authentication-command
+   #:unix-server-address
+   #:unix-connection))
