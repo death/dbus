@@ -85,12 +85,21 @@ IF-EXISTS determines how to find out:
        (replace-it)))))
 
 
-;;;; Server addresses
+;;;; Protocol classes and generic functions
 
 (defclass server-address ()
   ()
   (:documentation "Represents a DBUS server address, consisting of a
 transport name and zero or more properties."))
+
+(defclass connection ()
+  ()
+  (:documentation "Represents a DBUS connection to a server."))
+
+(defclass authentication-mechanism ()
+  ()
+  (:documentation "Represents a way to authenticate a client with a
+server."))
 
 (defgeneric server-address-transport-name (server-address)
   (:documentation "Return the canonical transport name for the server
@@ -99,6 +108,56 @@ address."))
 (defgeneric server-address-property (name server-address &key if-does-not-exist)
   (:documentation "Return the value of the server address's property
 with the supplied name."))
+
+(defgeneric open-connection (server-address &key if-failed)
+  (:documentation "Open a connection to the server designated by the
+server address.
+
+IF-FAILED (default value: :ERROR) determines what to do on failure:
+
+  :ERROR - signal an error.
+
+  NIL - return NIL."))
+
+(defgeneric connection-server-address (connection)
+  (:documentation "Return the server's address."))
+
+(defgeneric connection-server-uuid (connection)
+  (:documentation "Return the unique ID of the server."))
+
+(defgeneric close-connection (connection)
+  (:documentation "Close an open connection."))
+
+(defgeneric receive-line (connection)
+  (:documentation "Read a line of text from the server and return it as
+a string.  The operation blocks until a whole line can be read.  The
+string will not contain newline characters."))
+
+(defgeneric send-line (line connection)
+  (:documentation "Send a line of text, represented by a string, to
+the server.  The operation will force (but not finish) output before
+returning.  The string should not contain any newline characters."))
+
+(defgeneric send-nul-byte (connection)
+  (:documentation "Send a \"nul byte\" (i.e. an octet whose value is
+0) to the server.  The operation will force (but not finish) output
+before returning."))
+
+(defgeneric supported-authentication-mechanisms (connection)
+  (:documentation "Return a list of authentication mechanisms
+supported by the server."))
+
+(defgeneric authenticate (authentication-mechanism connection &key if-failed)
+  (:documentation "Attempt to authenticate with the server.
+
+IF-FAILED (default value: :ERROR) determines what to do on failure:
+
+  :ERROR - signal an error.
+
+  NIL - return NIL."))
+
+
+;;;; Server addresses
 
 (defclass standard-server-address (server-address)
   ((transport-name :initarg :transport-name :reader server-address-transport-name)
