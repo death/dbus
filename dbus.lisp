@@ -207,6 +207,23 @@ class names)."
   :find find-authentication-mechanism-class)
 
 
+;;;; Convenience methods
+
+(defmethod open-connection ((addresses list) &key (if-failed :error))
+  (with-if-failed-handler if-failed
+    (or (some (lambda (address)
+                (open-connection address :if-failed nil))
+              addresses)
+        (error "No server addresses left to try to open."))))
+
+(defmethod authenticate ((mechanisms list) connection &key (if-failed :error))
+  (with-if-failed-handler if-failed
+    (or (some (lambda (mechanism)
+                (authenticate mechanism connection :if-failed nil))
+              mechanisms)
+        (error "No authentication mechanisms left to try."))))
+
+
 ;;;; Server addresses
 
 (defclass standard-server-address (server-address)
