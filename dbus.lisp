@@ -129,10 +129,12 @@ server address and return a connection object.  The default value for
 IF-FAILED is :ERROR."))
 
 (defgeneric connection-server-address (connection)
-  (:documentation "Return the server's address."))
+  (:documentation "Return the address of the server associated with
+the connection."))
 
 (defgeneric connection-server-uuid (connection)
-  (:documentation "Return the unique ID of the server."))
+  (:documentation "Return the unique ID of the server associated with
+the connection."))
 
 (defgeneric close-connection (connection)
   (:documentation "Close an open connection."))
@@ -164,6 +166,8 @@ true if successful.  The default value for IF-FAILED is :ERROR."))
 ;;;; Mapping of names (strings) to classes (or class names)
 
 (defmacro define-name-class-mapping (&key class map find)
+  "Define an interface for mapping names (strings) to classes (or
+class names)."
   (let ((map-docstring (format nil "Map names to ~A classes or class names." class))
         (find-docstring (format nil "Return the ~A class (or class name) corresponding to NAME." class))
         (find-setf-docstring (format nil "Associate a ~A class (or class name) with NAME." class)))
