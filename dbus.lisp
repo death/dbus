@@ -84,6 +84,42 @@ IF-EXISTS determines how to find out:
       (:replace
        (replace-it)))))
 
+(defun encode-hex-string (data &key (start 0) end)
+  "Encode a string composed of hexadecimal digit character pairs, each
+representing an octet.  The input is either an octet vector, or a
+UTF-8 string that will be converted to one.
+
+START and END are bounding index designators for the data."
+  (etypecase data
+    (string
+     (encode-hex-string
+      (babel:string-to-octets data :encoding :utf-8 :start start :end end)))
+    (vector
+     (with-output-to-string (out)
+       (loop for index from start below (or end (length data))
+             for octet = (aref data index) do 
+             (write-char (char-downcase (digit-char (ash octet -4) 16)) out)
+             (write-char (char-downcase (digit-char (logand octet #x0F) 16)) out))))))
+
+(defun decode-hex-string (string &key (start 0) end)
+  "Decode a string composed of hexadecimal digit character pairs, each
+representing an octet, to an octet vector with the corresponding
+octets.
+
+START and END are bounding index designators for the string."
+  (when (null end)
+    (setf end (length string)))
+  (assert (evenp (- end start)))
+  (let ((octets (make-octet-vector (/ (- end start) 2) :fill-pointer 0)))
+    (with-input-from-string (in string :start start :end end)
+      (loop for hi = (read-char in nil nil)
+            for lo = (read-char in nil nil)
+            until (null hi)
+            do (vector-push (logior (ash (digit-char-p hi 16) 4)
+                                    (digit-char-p lo 16))
+                            octets)))
+    octets))
+
 (defun call-with-if-failed-handler (if-failed function)
   "Call FUNCTION in a context according to IF-FAILED:
 
@@ -346,3 +382,107 @@ server addresses."
     (when (and old-uuid (not (equal old-uuid new-uuid)))
       (cerror "Set new ID and continue."
               "A server ID is already assigned to this connection."))))
+
+
+;;;; Authentication mechanisms
+
+(defclass standard-authentication-mechanism (authentication-mechanism)
+  ((name :initarg :name :reader authentication-mechanism-name))
+  (:documentation "Represents a standard authentication mechanism."))
+
+(defmethod authenticate :around ((mechanism standard-authentication-mechanism)
+                                 (connection standard-connection)
+                                 &key (if-failed :error))
+  (with-if-failed-handler if-failed
+    (call-next-method)))
+
+(defclass generic-authentication-mechanism (standard-authentication-mechanism)
+  ()
+  (:documentation "Represents an authentication mechanism that is not
+supported by the DBUS system."))
+
+(defmethod authenticate ((mechanism generic-authentication-mechanism)
+                         (connection standard-connection)
+                         &key (if-failed :error))
+  (declare (ignore if-failed))
+  (error "Unsupported authentication mechanism ~S." mechanism))
+
+(define-condition authentication-error (dbus-error)
+  ((command :initarg :command :reader authentication-error-command)
+   (argument :initarg :argument :reader authentication-error-argument))
+  (:report (lambda (condition stream)
+             (format stream "Authentication error, command ~S with argument ~S."
+                     (authentication-error-command condition)
+                     (authentication-error-argument condition)))))
+
+(defun parse-authentication-response (line &key as-string)
+  "Parse authentication response line and return two values:
+
+  :REJECTED - current authentication exchanged failed; the second
+              value is a list of authentication mechanisms.
+
+  :OK - client has been authenticated; the second value is the
+        server's UUID.
+
+  :DATA - data available; the second value is either an octet vector
+          or a string, depending on the value of AS-STRING.
+
+  :ERROR - bad command or arguments; the second value is NIL.
+
+  :UNEXPECTED - unexpected command; the second value is the response
+                line."
+  (cond ((starts-with-subseq "REJECTED " line)
+         (values :rejected (split-sequence #\Space line :start 9)))
+        ((starts-with-subseq "OK " line)
+         (values :ok (subseq line 3)))
+        ((starts-with-subseq "DATA " line)
+         (let ((data (decode-hex-string line :start 5)))
+           (values :data (if as-string (babel:octets-to-string data :encoding :utf-8) data))))
+        ((starts-with-subseq "ERROR " line)
+         (values :error nil))
+        (t (values :unexpected line))))
+
+(defun format-authentication-command (command &rest arguments)
+  "Format and return authentication command line.  Command is one
+of :AUTH, :CANCEL, :BEGIN, :DATA, or :ERROR, and takes arguments in
+accordance with the D-BUS specification."
+  (ecase command
+    (:auth
+     (destructuring-bind (&optional mechanism initial-response) arguments
+       (format nil "AUTH ~@[~A~]~@[ ~A~]" mechanism initial-response)))
+    (:cancel "CANCEL ")
+    (:begin "BEGIN ")
+    (:data
+     (destructuring-bind (data) arguments
+       (format nil "DATA ~A" (encode-hex-string data))))
+    (:error
+     (destructuring-bind (&optional explanation) arguments
+       (format nil "ERROR ~@[~A~]" explanation)))))
+
+(defun receive-authentication-response (connection &key as-string expect)
+  "Receive authentication response line from the server.  If EXPECT is
+NIL, just return the response command and argument.  Otherwise,
+compare its value to the response command.  If they are the same, just
+return the argument; otherwise, signal an authentication error."
+  (multiple-value-bind (command argument)
+      (parse-authentication-response (receive-line connection)
+                                     :as-string as-string)
+    (cond ((null expect) (values command argument))
+          ((eq command expect) argument)
+          (t (error 'authentication-error
+                    :command command
+                    :argument argument)))))
+
+(defun send-authentication-command (connection command &rest arguments)
+  "Send an authentication command to the server."
+  (send-line (apply #'format-authentication-command command arguments)
+             connection))
+
+(defmethod supported-authentication-mechanisms ((connection standard-connection))
+  (send-authentication-command connection :auth)
+  (mapcar (lambda (name)
+            (make-instance
+             (or (find-authentication-mechanism-class name :if-does-not-exist nil)
+                 'generic-authentication-mechanism)
+             :name name))
+          (receive-authentication-response connection :expect :rejected)))

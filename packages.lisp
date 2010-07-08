@@ -3,7 +3,7 @@
 ;;;; +----------------------------------------------------------------+
 
 (defpackage #:dbus
-  (:use #:cl #:alexandria)
+  (:use #:cl #:alexandria #:split-sequence)
   (:export
    #:dbus-error
    #:inexistent-entry
@@ -32,4 +32,11 @@
    #:generic-server-address
    #:parse-server-addresses-string
    #:session-server-addresses
-   #:standard-connection))
+   #:standard-connection
+   #:standard-authentication-mechanism
+   #:generic-authentication-mechanism
+   #:authentication-error
+   #:authentication-error-command
+   #:authentication-error-argument
+   #:receive-authentication-response
+   #:send-authentication-command))
