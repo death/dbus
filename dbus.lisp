@@ -9,7 +9,8 @@
 
 (define-condition dbus-error (error)
   ()
-  (:documentation "The supertype errors related to the DBUS system."))
+  (:documentation "The supertype for errors related to the DBUS
+system."))
 
 (defun make-octet-vector (size &rest array-options)
   "Return a fresh vector whose element type is (unsigned-byte 8)."
