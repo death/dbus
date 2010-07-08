@@ -134,6 +134,17 @@ START and END are bounding index designators for the string."
   "Sugar for CALL-WITH-IF-FAILED-HANDLER."
   `(call-with-if-failed-handler ,if-failed-form (lambda () ,@forms)))
 
+(defun current-username ()
+  "Return the current user's name."
+  (nth-value 0 (iolib.syscalls:getpwuid (iolib.syscalls:getuid))))
+
+(defun random-challenge-string (&optional (num-octets 16))
+  "Return a string containing a hex-encoded representation of a number
+of random octet values."
+  (with-output-to-string (out)
+    (loop repeat (* 2 num-octets) do
+          (write-char (char-downcase (digit-char (random 16) 16)) out))))
+
 
 ;;;; Protocol classes and generic functions
 
@@ -540,3 +551,56 @@ Domain Sockets."))
 
 (defmethod receive-line ((connection unix-connection))
   (read-line (connection-socket connection)))
+
+
+;;;; DBUS Cookie SHA1 authentication mechanism
+
+(defclass dbus-cookie-sha1-authentication-mechanism (standard-authentication-mechanism)
+  ()
+  (:documentation "Authenticate using a local cookie and SHA1."))
+
+(setf (find-authentication-mechanism-class "DBUS_COOKIE_SHA1")
+      'dbus-cookie-sha1-authentication-mechanism)
+
+(defvar *keyrings-directory*
+  (merge-pathnames (make-pathname :directory '(:relative ".dbus-keyrings"))
+                   (user-homedir-pathname))
+  "The directory holding context files containing cookies.")
+
+(defun find-cookie (context-name cookie-id &key (if-does-not-exist :error))
+  "Find the cookie corresponding to COOKIE-ID in the appropriate
+context file."
+  (with-open-file (in (make-pathname :name context-name
+                                     :defaults *keyrings-directory*)
+                      :direction :input)
+    (loop for line = (read-line in nil nil)
+          while line do
+          (destructuring-bind (id ctime cookie)
+              (split-sequence #\Space line)
+            (declare (ignore ctime))
+            (when (equal id cookie-id)
+              (return-from find-cookie cookie)))))
+  (inexistent-entry (list context-name cookie-id) if-does-not-exist))
+
+(defun cookie-sha1-authentication-data (my-challenge-string context-name cookie-id challenge-string)
+  "Return the authentication data appropriate for the arguments in
+accordance with the DBUS_COOKIE_SHA1 specification."
+  (let* ((cookie (find-cookie context-name cookie-id))
+         (message (format nil "~A:~A:~A" challenge-string my-challenge-string cookie))
+         (digest (ironclad:digest-sequence :sha1 (babel:string-to-octets message :encoding :utf-8))))
+    (format nil "~A ~A" my-challenge-string (encode-hex-string digest))))
+
+(defmethod authenticate ((mechanism dbus-cookie-sha1-authentication-mechanism)
+                         (connection standard-connection)
+                         &key (if-failed :error))
+  (declare (ignore if-failed))
+  (flet ((send (command &rest args)
+           (apply #'send-authentication-command connection command args))
+         (receive (&rest args)
+           (apply #'receive-authentication-response connection args)))
+    (send :auth "DBUS_COOKIE_SHA1" (encode-hex-string (current-username)))
+    (send :data (apply #'cookie-sha1-authentication-data (random-challenge-string)
+                       (split-sequence #\Space (receive :as-string t :expect :data))))
+    (setf (connection-server-uuid connection) (receive :expect :ok))
+    (send :begin))
+  t)

@@ -41,4 +41,5 @@
    #:receive-authentication-response
    #:send-authentication-command
    #:unix-server-address
-   #:unix-connection))
+   #:unix-connection
+   #:dbus-cookie-sha1-authentication-mechanism))
