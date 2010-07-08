@@ -25,8 +25,9 @@
    #:send-nul-byte
    #:supported-authentication-mechanisms
    #:authenticate
+   #:find-server-address-class
+   #:find-authentication-mechanism-class
    #:standard-server-address
    #:generic-server-address
-   #:find-server-address-class
    #:parse-server-addresses-string
    #:session-server-addresses))
