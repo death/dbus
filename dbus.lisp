@@ -224,13 +224,38 @@ before returning."))
   (:documentation "Return the name for the authentication
 mechanism."))
 
+(defgeneric authentication-mechanism-textual-p (authentication-mechanism)
+  (:documentation "Return true if data from server should be converted
+to a string, and false if it should remain an octet vector."))
+
+(defgeneric feed-authentication-mechanism (authentication-mechanism challenge)
+  (:documentation "Feed authentication mechanism with a challenge,
+which is either a string or an octet vector in accordance with the
+mechanism's textuality, or :INITIAL-RESPONSE.  The method should
+return one of the following:
+
+  :CONTINUE <response>
+
+    Continue with the authentication conversation and send <response>
+    to the server.
+
+  :OK <response>
+
+    After sending <response> to the server the client is finished and
+    expecting an :OK response.
+
+  :ERROR
+
+    The challenge was invalid."))
+
 (defgeneric supported-authentication-mechanisms (connection)
   (:documentation "Return a list of authentication mechanisms
 supported by the server."))
 
-(defgeneric authenticate (authentication-mechanism connection &key if-failed)
-  (:documentation "Attempt to authenticate with the server.  Return
-true if successful.  The default value for IF-FAILED is :ERROR."))
+(defgeneric authenticate (authentication-mechanisms connection &key if-failed)
+  (:documentation "Attempt to authenticate with the server associated
+with the connection, and return true if successful.  The default value
+for IF-FAILED is :ERROR."))
 
 
 ;;;; Mapping of names (strings) to classes (or class names)
@@ -276,13 +301,6 @@ class names)."
                 (open-connection address :if-failed nil))
               addresses)
         (error "No server addresses left to try to open."))))
-
-(defmethod authenticate ((mechanisms list) connection &key (if-failed :error))
-  (with-if-failed-handler if-failed
-    (or (some (lambda (mechanism)
-                (authenticate mechanism connection :if-failed nil))
-              mechanisms)
-        (error "No authentication mechanisms left to try."))))
 
 
 ;;;; Server addresses
@@ -412,25 +430,19 @@ server addresses."
 ;;;; Authentication mechanisms
 
 (defclass standard-authentication-mechanism (authentication-mechanism)
-  ((name :initarg :name :reader authentication-mechanism-name))
+  ((name :initarg :name :reader authentication-mechanism-name)
+   (textual :initarg :textual :reader authentication-mechanism-textual-p))
+  (:default-initargs :textual nil)
   (:documentation "Represents a standard authentication mechanism."))
-
-(defmethod authenticate :around ((mechanism standard-authentication-mechanism)
-                                 (connection standard-connection)
-                                 &key (if-failed :error))
-  (with-if-failed-handler if-failed
-    (call-next-method)))
 
 (defclass generic-authentication-mechanism (standard-authentication-mechanism)
   ()
   (:documentation "Represents an authentication mechanism that is not
 supported by the DBUS system."))
 
-(defmethod authenticate ((mechanism generic-authentication-mechanism)
-                         (connection standard-connection)
-                         &key (if-failed :error))
-  (declare (ignore if-failed))
-  (error "Unsupported authentication mechanism ~S." mechanism))
+(defmethod feed-authentication-mechanism ((mechanism generic-authentication-mechanism) challenge)
+  (declare (ignore challenge))
+  (values :error))
 
 (define-condition authentication-error (dbus-error)
   ((command :initarg :command :reader authentication-error-command)
@@ -519,6 +531,57 @@ return the argument; otherwise, signal an authentication error."
              :name name))
           (receive-authentication-response connection :expect :rejected)))
 
+(defmethod authenticate (mechanisms (connection standard-connection) &key (if-failed :error))
+  (with-if-failed-handler if-failed
+    (setf mechanisms (ensure-list mechanisms))
+    (let (op arg mechanism)
+      (flet ((send (command &rest args)
+               (apply #'send-authentication-command connection command args))
+             (receive ()
+               (receive-authentication-response connection :as-string (authentication-mechanism-textual-p mechanism))))
+        (tagbody
+         initial
+           (if (null mechanisms)
+               (error "No more mechanisms to try.")
+               (setf mechanism (pop mechanisms)))
+           (multiple-value-setq (op arg) (feed-authentication-mechanism mechanism :initial-response))
+           (when (eq op :error)
+             (go initial))
+           (if arg
+               (send :auth (authentication-mechanism-name mechanism) arg)
+               (send :auth (authentication-mechanism-name mechanism)))
+           (ecase op
+             (:ok (go waiting-for-ok))
+             (:continue (go waiting-for-data)))
+         waiting-for-data
+           (multiple-value-setq (op arg) (receive))
+           (case op
+             (:data
+              (multiple-value-setq (op arg) (feed-authentication-mechanism mechanism arg))
+              (ecase op
+                (:continue (send :data arg) (go waiting-for-data))
+                (:ok (send :data arg) (go waiting-for-ok))
+                (:error (if arg (send :error arg) (send :error)) (go waiting-for-data))))
+             (:rejected (go initial))
+             (:error (send :cancel) (go waiting-for-reject))
+             (:ok (send :begin) (go authenticated))
+             (t (send :error) (go waiting-for-data)))
+         waiting-for-ok
+           (multiple-value-setq (op arg) (receive))
+           (case op
+             (:ok (send :begin) (go authenticated))
+             (:reject (go initial))
+             ((:data :error) (send :cancel) (go waiting-for-reject))
+             (t (send :error) (go waiting-for-ok)))
+         waiting-for-reject
+           (multiple-value-setq (op arg) (receive))
+           (case op
+             (:reject (go initial))
+             (t (error 'authentication-error :command op :argument arg)))
+         authenticated
+           (setf (connection-server-uuid connection) arg))))
+    t))
+
 
 ;;;; Unix Domain Sockets
 
@@ -578,6 +641,7 @@ Domain Sockets."))
 
 (defclass dbus-cookie-sha1-authentication-mechanism (standard-authentication-mechanism)
   ()
+  (:default-initargs :textual t)
   (:documentation "Authenticate using a local cookie and SHA1."))
 
 (setf (find-authentication-mechanism-class "DBUS_COOKIE_SHA1")
@@ -603,25 +667,13 @@ context file."
               (return-from find-cookie cookie)))))
   (inexistent-entry (list context-name cookie-id) if-does-not-exist))
 
-(defun cookie-sha1-authentication-data (my-challenge-string context-name cookie-id challenge-string)
-  "Return the authentication data appropriate for the arguments in
-accordance with the DBUS_COOKIE_SHA1 specification."
-  (let* ((cookie (find-cookie context-name cookie-id))
-         (message (format nil "~A:~A:~A" challenge-string my-challenge-string cookie))
-         (digest (ironclad:digest-sequence :sha1 (babel:string-to-octets message :encoding :utf-8))))
-    (format nil "~A ~A" my-challenge-string (encode-hex-string digest))))
-
-(defmethod authenticate ((mechanism dbus-cookie-sha1-authentication-mechanism)
-                         (connection standard-connection)
-                         &key (if-failed :error))
-  (declare (ignore if-failed))
-  (flet ((send (command &rest args)
-           (apply #'send-authentication-command connection command args))
-         (receive (&rest args)
-           (apply #'receive-authentication-response connection args)))
-    (send :auth "DBUS_COOKIE_SHA1" (encode-hex-string (current-username)))
-    (send :data (apply #'cookie-sha1-authentication-data (random-challenge-string)
-                       (split-sequence #\Space (receive :as-string t :expect :data))))
-    (setf (connection-server-uuid connection) (receive :expect :ok))
-    (send :begin))
-  t)
+(defmethod feed-authentication-mechanism ((mechanism dbus-cookie-sha1-authentication-mechanism) challenge)
+  (if (eq challenge :initial-response)
+      (values :continue (encode-hex-string (current-username)))
+      (destructuring-bind (context-name cookie-id challenge-string)
+          (split-sequence #\Space challenge)
+        (let* ((my-challenge-string (random-challenge-string))
+               (cookie (find-cookie context-name cookie-id))
+               (message (format nil "~A:~A:~A" challenge-string my-challenge-string cookie))
+               (digest (ironclad:digest-sequence :sha1 (babel:string-to-octets message :encoding :utf-8))))
+          (values :ok (format nil "~A ~A" my-challenge-string (encode-hex-string digest)))))))

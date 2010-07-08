@@ -24,6 +24,8 @@
    #:send-line
    #:send-nul-byte
    #:authentication-mechanism-name
+   #:authentication-mechanism-textual-p
+   #:feed-authentication-mechanism
    #:supported-authentication-mechanisms
    #:authenticate
    #:find-server-address-class
@@ -38,8 +40,6 @@
    #:authentication-error
    #:authentication-error-command
    #:authentication-error-argument
-   #:receive-authentication-response
-   #:send-authentication-command
    #:unix-server-address
    #:unix-connection
    #:dbus-cookie-sha1-authentication-mechanism))
