@@ -230,6 +230,10 @@ transport name and a table of properties."))
   (:documentation "Represents a server address whose transport is not
 supported by the DBUS system."))
 
+(defmethod open-connection ((address generic-server-address) &key (if-failed :error))
+  (declare (ignore if-failed))
+  (error "Unsupported transport mechanism for ~S." address))
+
 (defun parse-server-addresses-from-stream (in)
   "Parse unescaped server addresses text from a character stream and
 return a list of server addresses."
