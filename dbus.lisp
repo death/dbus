@@ -84,6 +84,20 @@ IF-EXISTS determines how to find out:
       (:replace
        (replace-it)))))
 
+(defun call-with-if-failed-handler (if-failed function)
+  "Call FUNCTION in a context according to IF-FAILED:
+
+  :ERROR - signal an error on failure.
+
+  NIL - return NIL on failure."
+  (ecase if-failed
+    (:error (funcall function))
+    ((nil) (ignore-errors (funcall function)))))
+
+(defmacro with-if-failed-handler (if-failed-form &body forms)
+  "Sugar for CALL-WITH-IF-FAILED-HANDLER."
+  `(call-with-if-failed-handler ,if-failed-form (lambda () ,@forms)))
+
 
 ;;;; Protocol classes and generic functions
 
@@ -111,13 +125,8 @@ with the supplied name."))
 
 (defgeneric open-connection (server-address &key if-failed)
   (:documentation "Open a connection to the server designated by the
-server address and return a connection object.
-
-IF-FAILED (default value: :ERROR) determines what to do on failure:
-
-  :ERROR - signal an error.
-
-  NIL - return NIL."))
+server address and return a connection object.  The default value for
+IF-FAILED is :ERROR."))
 
 (defgeneric connection-server-address (connection)
   (:documentation "Return the server's address."))
@@ -149,13 +158,7 @@ supported by the server."))
 
 (defgeneric authenticate (authentication-mechanism connection &key if-failed)
   (:documentation "Attempt to authenticate with the server.  Return
-true if successful.
-
-IF-FAILED (default value: :ERROR) determines what to do on failure:
-
-  :ERROR - signal an error.
-
-  NIL - return NIL."))
+true if successful.  The default value for IF-FAILED is :ERROR."))
 
 
 ;;;; Mapping of names (strings) to classes (or class names)
@@ -198,6 +201,11 @@ IF-FAILED (default value: :ERROR) determines what to do on failure:
    (properties :initarg :properties :reader server-address-properties))
   (:documentation "Represents a standard server address with a
 transport name and a table of properties."))
+
+(defmethod open-connection :around ((server-address standard-server-address)
+                                    &key (if-failed :error))
+  (with-if-failed-handler if-failed
+    (call-next-method)))
 
 (defmethod server-address-property (name (server-address standard-server-address)
                                     &key (if-does-not-exist :error))
