@@ -102,7 +102,7 @@ transport name and zero or more properties."))
 server."))
 
 (defgeneric server-address-transport-name (server-address)
-  (:documentation "Return the canonical transport name for the server
+  (:documentation "Return the transport name for the server
 address."))
 
 (defgeneric server-address-property (name server-address &key if-does-not-exist)
@@ -111,7 +111,7 @@ with the supplied name."))
 
 (defgeneric open-connection (server-address &key if-failed)
   (:documentation "Open a connection to the server designated by the
-server address.
+server address and return a connection object.
 
 IF-FAILED (default value: :ERROR) determines what to do on failure:
 
@@ -148,7 +148,8 @@ before returning."))
 supported by the server."))
 
 (defgeneric authenticate (authentication-mechanism connection &key if-failed)
-  (:documentation "Attempt to authenticate with the server.
+  (:documentation "Attempt to authenticate with the server.  Return
+true if successful.
 
 IF-FAILED (default value: :ERROR) determines what to do on failure:
 
@@ -190,8 +191,8 @@ IF-FAILED (default value: :ERROR) determines what to do on failure:
 (defclass standard-server-address (server-address)
   ((transport-name :initarg :transport-name :reader server-address-transport-name)
    (properties :initarg :properties :reader server-address-properties))
-  (:documentation "Represents a standard server address with a table
-of properties."))
+  (:documentation "Represents a standard server address with a
+transport name and a table of properties."))
 
 (defmethod server-address-property (name (server-address standard-server-address)
                                     &key (if-does-not-exist :error))
