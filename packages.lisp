@@ -23,6 +23,7 @@
    #:receive-line
    #:send-line
    #:send-nul-byte
+   #:authentication-mechanism-name
    #:supported-authentication-mechanisms
    #:authenticate
    #:find-server-address-class

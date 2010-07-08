@@ -136,6 +136,11 @@ the connection."))
   (:documentation "Return the unique ID of the server associated with
 the connection."))
 
+(defgeneric (setf connection-server-uuid) (uuid connection)
+  (:documentation "Set the unique ID of the server associated with the
+connection.  If an ID is already set and is not EQUAL to the new ID,
+signal a continuable error."))
+
 (defgeneric close-connection (connection)
   (:documentation "Close an open connection."))
 
@@ -153,6 +158,10 @@ returning.  The string should not contain any newline characters."))
   (:documentation "Send a \"nul byte\" (i.e. an octet whose value is
 0) to the server.  The operation will force (but not finish) output
 before returning."))
+
+(defgeneric authentication-mechanism-name (authentication-mechanism)
+  (:documentation "Return the name for the authentication
+mechanism."))
 
 (defgeneric supported-authentication-mechanisms (connection)
   (:documentation "Return a list of authentication mechanisms
