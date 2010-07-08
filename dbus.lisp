@@ -331,3 +331,18 @@ server addresses."
   "Return a list of server addresses for the current session."
   (when-let (string (iolib.syscalls:getenv "DBUS_SESSION_BUS_ADDRESS"))
     (parse-server-addresses-string string)))
+
+
+;;;; Connections
+
+(defclass standard-connection (connection)
+  ((server-address :initarg :server-address :reader connection-server-address)
+   (uuid :initarg :uuid :accessor connection-server-uuid))
+  (:default-initargs :uuid nil)
+  (:documentation "Represents a standard DBUS connection."))
+
+(defmethod (setf connection-server-uuid) :before (new-uuid (connection standard-connection))
+  (let ((old-uuid (connection-server-uuid connection)))
+    (when (and old-uuid (not (equal old-uuid new-uuid)))
+      (cerror "Set new ID and continue."
+              "A server ID is already assigned to this connection."))))

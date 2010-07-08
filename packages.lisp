@@ -31,4 +31,5 @@
    #:standard-server-address
    #:generic-server-address
    #:parse-server-addresses-string
-   #:session-server-addresses))
+   #:session-server-addresses
+   #:standard-connection))
