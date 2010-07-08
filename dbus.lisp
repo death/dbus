@@ -542,9 +542,7 @@ return the argument; otherwise, signal an authentication error."
            (multiple-value-setq (op arg) (feed-authentication-mechanism mechanism :initial-response))
            (when (eq op :error)
              (go initial))
-           (if arg
-               (send :auth (authentication-mechanism-name mechanism) arg)
-               (send :auth (authentication-mechanism-name mechanism)))
+           (send :auth (authentication-mechanism-name mechanism) arg)
            (ecase op
              (:ok (go waiting-for-ok))
              (:continue (go waiting-for-data)))
