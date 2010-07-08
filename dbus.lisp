@@ -187,7 +187,7 @@ with the supplied name."))
 (defgeneric open-connection (server-address &key if-failed)
   (:documentation "Open a connection to the server designated by the
 server address and return a connection object.  The default value for
-IF-FAILED is :ERROR."))
+IF-FAILED is :ERROR.  Should also send the initial \"nul byte\"."))
 
 (defgeneric connection-server-address (connection)
   (:documentation "Return the address of the server associated with
@@ -214,11 +214,6 @@ string will not contain newline characters."))
   (:documentation "Send a line of text, represented by a string, to
 the server.  The operation will force (but not finish) output before
 returning.  The string should not contain any newline characters."))
-
-(defgeneric send-nul-byte (connection)
-  (:documentation "Send a \"nul byte\" (i.e. an octet whose value is
-0) to the server.  The operation will force (but not finish) output
-before returning."))
 
 (defgeneric authentication-mechanism-name (authentication-mechanism)
   (:documentation "Return the name for the authentication
@@ -618,16 +613,14 @@ Domain Sockets."))
                             :server-address address
                             :uuid (server-address-property "guid" address :if-does-not-exist nil))
            (iolib:connect socket (server-address-socket-address address))
+           (write-byte 0 socket)
+           (force-output socket)
            (setf socket nil))
       (when socket
         (close socket)))))
 
 (defmethod close-connection ((connection unix-connection))
   (close (connection-socket connection)))
-
-(defmethod send-nul-byte ((connection unix-connection))
-  (write-byte 0 (connection-socket connection))
-  (force-output (connection-socket connection)))
 
 (defmethod send-line (line (connection unix-connection))
   (write-line line (connection-socket connection))

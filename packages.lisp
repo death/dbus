@@ -22,7 +22,6 @@
    #:close-connection
    #:receive-line
    #:send-line
-   #:send-nul-byte
    #:authentication-mechanism-name
    #:authentication-mechanism-textual-p
    #:feed-authentication-mechanism
