@@ -189,7 +189,7 @@ NAME."
   "Associate a server address class (or class name) with NAME."
   (when-let (old (find-server-address-class name :if-does-not-exist nil))
     (when (not (replace-entry-p old class if-exists))
-      (return-from find-server-address-class nil)))
+      (return-from find-server-address-class class)))
   (setf (gethash name *server-address-classes*) class))
 
 (defun parse-server-addresses-from-stream (in)
