@@ -25,9 +25,13 @@
   "Called when an inexistent entry was sought using DESIGNATOR, and
 acts according to the value of IF-DOES-NOT-EXIST:
 
-  :ERROR - signal an INEXISTENT-ENTRY error with a USE-VALUE restart.
+  :ERROR
 
-  NIL - return NIL."
+    Signal an INEXISTENT-ENTRY error with a USE-VALUE restart.
+
+  NIL
+
+    Return NIL."
   (ecase if-does-not-exist
     (:error
      (restart-case (error 'inexistent-entry :designator designator)
@@ -52,19 +56,25 @@ evaluated, and its value is returned."
                      (entry-replacement-attempt-new condition)))))
 
 (defun replace-entry-p (old new if-exists)
-  "Return true if the new entry should replace the old one.
+  "Return true if the new entry should replace the old one.  IF-EXISTS
+determines how to find out:
 
-IF-EXISTS determines how to find out:
+  :ERROR
 
-  :ERROR - signal an ENTRY-ALREADY-EXISTS error with a CONTINUE
-           restart to replace the entry, and an ABORT restart to not
-           replace it.
+    Signal an ENTRY-ALREADY-EXISTS error with a CONTINUE restart to
+    replace the entry, and an ABORT restart to not replace it.
 
-  :WARN - replace the entry after signaling a warning.
+  :WARN
 
-  :DONT-REPLACE - don't replace entry.
+    Replace the entry after signaling a warning.
 
-  :REPLACE - replace entry."
+  :DONT-REPLACE
+
+    Don't replace entry.
+
+  :REPLACE
+
+    Replace entry."
   (flet ((replace-it () (return-from replace-entry-p t))
          (dont-replace-it () (return-from replace-entry-p nil)))
     (ecase if-exists
@@ -123,9 +133,13 @@ START and END are bounding index designators for the string."
 (defun call-with-if-failed-handler (if-failed function)
   "Call FUNCTION in a context according to IF-FAILED:
 
-  :ERROR - signal an error on failure.
+  :ERROR
 
-  NIL - return NIL on failure."
+    Signal an error on failure.
+
+  NIL
+
+    Return NIL on failure."
   (ecase if-failed
     (:error (funcall function))
     ((nil) (ignore-errors (funcall function)))))
@@ -429,19 +443,28 @@ supported by the DBUS system."))
 (defun parse-authentication-response (line &key as-string)
   "Parse authentication response line and return two values:
 
-  :REJECTED - current authentication exchanged failed; the second
-              value is a list of authentication mechanisms.
+  :REJECTED
 
-  :OK - client has been authenticated; the second value is the
-        server's UUID.
+    Current authentication exchanged failed; the second value is a
+    list of authentication mechanisms.
 
-  :DATA - data available; the second value is either an octet vector
-          or a string, depending on the value of AS-STRING.
+  :OK
 
-  :ERROR - bad command or arguments; the second value is NIL.
+    Client has been authenticated; the second value is the server's
+    UUID.
 
-  :UNEXPECTED - unexpected command; the second value is the response
-                line."
+  :DATA
+
+    Data are available; the second value is either an octet vector or
+    a string, depending on the value of AS-STRING.
+
+  :ERROR
+
+    Bad command or arguments; the second value is NIL.
+
+  :UNEXPECTED
+
+    Unexpected command; the second value is the response line."
   (cond ((starts-with-subseq "REJECTED " line)
          (values :rejected (split-sequence #\Space line :start 9)))
         ((starts-with-subseq "OK " line)
@@ -480,9 +503,7 @@ return the argument; otherwise, signal an authentication error."
                                      :as-string as-string)
     (cond ((null expect) (values command argument))
           ((eq command expect) argument)
-          (t (error 'authentication-error
-                    :command command
-                    :argument argument)))))
+          (t (error 'authentication-error :command command :argument argument)))))
 
 (defun send-authentication-command (connection command &rest arguments)
   "Send an authentication command to the server."
