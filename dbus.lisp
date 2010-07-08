@@ -224,7 +224,8 @@ return a list of server addresses."
                  (when (or (plusp (length string))
                            (not ignore-empty))
                    (push string current-server-address))))
-             (finish-server-address ()
+             (finish-server-address (&optional ignore-empty)
+               (finish-token ignore-empty)
                (when current-server-address
                  (destructuring-bind (type &rest plist)
                      (nreverse current-server-address)
@@ -244,13 +245,13 @@ return a list of server addresses."
            (t (add-to-token) (go transport)))
        key
          (case (consume)
-           (#\; (finish-token t) (finish-server-address) (go transport))
+           (#\; (finish-server-address t) (go transport))
            (#\= (finish-token) (go value))
            (t (add-to-token) (go key)))
        value
          (case (consume)
            (#\, (finish-token) (go key))
-           (#\; (finish-token) (finish-server-address) (go transport))
+           (#\; (finish-server-address) (go transport))
            (t (add-to-token) (go value)))))))
 
 (defun unescape-server-addresses-string (string)
