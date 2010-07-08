@@ -160,30 +160,35 @@ IF-FAILED (default value: :ERROR) determines what to do on failure:
 
 ;;;; Mapping of names (strings) to classes (or class names)
 
-(defmacro define-name-class-mapping (protocol-class-name)
-  (let ((map-name (format-symbol *package* "*~A-CLASSES*" protocol-class-name))
-        (find-name (format-symbol *package* "FIND-~A-CLASS" protocol-class-name))
-        (map-docstring (format nil "Map names to ~A classes or class names." protocol-class-name))
-        (find-docstring (format nil "Return the ~A class (or class name) corresponding to NAME." protocol-class-name))
-        (find-setf-docstring (format nil "Associate a ~A class (or class name) with NAME." protocol-class-name)))
+(defmacro define-name-class-mapping (&key class map find)
+  (let ((map-docstring (format nil "Map names to ~A classes or class names." class))
+        (find-docstring (format nil "Return the ~A class (or class name) corresponding to NAME." class))
+        (find-setf-docstring (format nil "Associate a ~A class (or class name) with NAME." class)))
     `(progn
-       (defvar ,map-name
+       (defvar ,map
          (make-hash-table :test 'equal)
          ,map-docstring)
-       (defun ,find-name (name &key (if-does-not-exist :error))
+       (defun ,find (name &key (if-does-not-exist :error))
          ,find-docstring
-         (or (gethash name ,map-name)
+         (or (gethash name ,map)
              (inexistent-entry name if-does-not-exist)))
-       (defun (setf ,find-name) (class name &key (if-exists :warn))
+       (defun (setf ,find) (class name &key (if-exists :warn))
          ,find-setf-docstring
-         (when-let (old (,find-name name :if-does-not-exist nil))
+         (when-let (old (,find name :if-does-not-exist nil))
            (when (not (replace-entry-p old class if-exists))
-             (return-from ,find-name class)))
-         (setf (gethash name ,map-name) class))
-       ',protocol-class-name)))
+             (return-from ,find class)))
+         (setf (gethash name ,map) class))
+       ',class)))
 
-(define-name-class-mapping server-address)
-(define-name-class-mapping authentication-mechanism)
+(define-name-class-mapping
+  :class server-address
+  :map *server-address-classes*
+  :find find-server-address-class)
+
+(define-name-class-mapping
+  :class authentication-mechanism
+  :map *authentication-mechanism-classes*
+  :find find-authentication-mechanism-class)
 
 
 ;;;; Server addresses
