@@ -203,6 +203,10 @@ the connection."))
 connection.  If an ID is already set and is not EQUAL to the new ID,
 signal a continuable error."))
 
+(defgeneric connection-next-serial (connection)
+  (:documentation "Return a 32-bit integer for associating request
+messages and their replies."))
+
 (defgeneric close-connection (connection)
   (:documentation "Close an open connection."))
 
@@ -418,7 +422,8 @@ server addresses."
 
 (defclass standard-connection (connection)
   ((server-address :initarg :server-address :reader connection-server-address)
-   (uuid :initarg :uuid :accessor connection-server-uuid))
+   (uuid :initarg :uuid :accessor connection-server-uuid)
+   (serial :initform 1))
   (:default-initargs :uuid nil)
   (:documentation "Represents a standard DBUS connection."))
 
@@ -427,6 +432,13 @@ server addresses."
     (when (and old-uuid (not (equal old-uuid new-uuid)))
       (cerror "Set new ID and continue."
               "A server ID is already assigned to this connection."))))
+
+(defmethod connection-next-serial ((connection standard-connection))
+  (with-slots (serial) connection
+    (prog1 serial
+      (setf serial
+            (let ((x (logand (1+ serial) #xFFFFFFFF)))
+              (if (zerop x) 1 x))))))
 
 
 ;;;; Authentication mechanisms

@@ -19,6 +19,7 @@
    #:open-connection
    #:connection-server-address
    #:connection-server-uuid
+   #:connection-next-serial
    #:close-connection
    #:receive-line
    #:send-line
