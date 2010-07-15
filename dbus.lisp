@@ -407,6 +407,12 @@ server addresses."
   (when-let (string (iolib.syscalls:getenv "DBUS_SESSION_BUS_ADDRESS"))
     (parse-server-addresses-string string)))
 
+(defun system-server-addresses ()
+  "Return a list of server addresses for the current system."
+  (parse-server-addresses-string
+   (or (iolib.syscalls:getenv "DBUS_SYSTEM_BUS_ADDRESS")
+       "unix:path=/var/run/dbus/system_bus_socket")))    
+
 
 ;;;; Connections
 

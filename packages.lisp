@@ -33,6 +33,7 @@
    #:generic-server-address
    #:parse-server-addresses-string
    #:session-server-addresses
+   #:system-server-addresses
    #:standard-connection
    #:standard-authentication-mechanism
    #:generic-authentication-mechanism
