@@ -43,4 +43,6 @@
    #:authentication-error-argument
    #:unix-server-address
    #:unix-connection
-   #:dbus-cookie-sha1-authentication-mechanism))
+   #:dbus-cookie-sha1-authentication-mechanism
+   #:signature
+   #:sigexp))
