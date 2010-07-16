@@ -45,4 +45,6 @@
    #:unix-connection
    #:dbus-cookie-sha1-authentication-mechanism
    #:signature
-   #:sigexp))
+   #:sigexp
+   #:pack
+   #:unpack))

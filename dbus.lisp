@@ -160,6 +160,163 @@ of random octet values."
     (loop repeat (* 2 num-octets) do
           (write-char (char-downcase (digit-char (random 16) 16)) out))))
 
+(defmacro with-binary-writers ((stream endianness align u8 u16 u32 u64) &body forms)
+  "Evaluate forms with functions to write binary data to the stream in
+a given endianness.
+
+  STREAM
+
+    A form evaluating to a binary output stream with a file position.
+
+  ENDIANNESS
+
+    A form evaluating to either :LITTLE-ENDIAN or :BIG-ENDIAN.
+
+  ALIGN
+
+    A name to be bound to a function that takes an integer and ensures
+    the stream's file position is aligned to it.  It does so by
+    writing the appropriate number of 0 octets.
+
+  U8, U16, U32, U64
+
+    Names to be bound to functions that take 8-, 16-, 32-, and 64-bit
+    unsigned byte values, respectively, and write these values to the
+    stream, in the appropriate endianness.  The values are always
+    naturally aligned before written."
+  (once-only (stream)
+    (with-gensyms (body-function-name u8-var u16-var u32-var u64-var)
+      `(flet ((,body-function-name (,u8-var ,u16-var ,u32-var ,u64-var)
+                (labels ((,align (n)
+                           (loop until (zerop (mod (file-position ,stream) n)) do (,u8 0)))
+                         (,u8 (value)
+                           (funcall ,u8-var value))
+                         (,u16 (value)
+                           (,align 2)
+                           (funcall ,u16-var value))
+                         (,u32 (value)
+                           (,align 4)
+                           (funcall ,u32-var value))
+                         (,u64 (value)
+                           (,align 8)
+                           (funcall ,u64-var value)))
+                  (declare (inline ,align ,u8 ,u16 ,u32 ,u64))
+                  ,@forms)))
+         (ecase ,endianness
+           (:little-endian
+            (macrolet ((u (size)
+                         `(lambda (value)
+                            ,@(loop for i from 0 below size by 8
+                                    collect `(write-byte (ldb (byte 8 ,i) value) ,',stream)))))
+              (,body-function-name (u 8) (u 16) (u 32) (u 64))))
+           (:big-endian
+            (macrolet ((u (size)
+                         `(lambda (value)
+                            ,@(loop for i from (- size 8) downto 0 by 8
+                                    collect `(write-byte (ldb (byte 8 ,i) value) ,',stream)))))
+              (,body-function-name (u 8) (u 16) (u 32) (u 64)))))))))
+
+(defvar *stream-read-positions*
+  (make-hash-table :weakness :key)
+  "A mapping from a stream (weakly referenced) to a read position.")
+
+(defun stream-read-position (stream)
+  "Return the stream's read position (zero by default)."
+  (gethash stream *stream-read-positions* 0))
+
+(defun (setf stream-read-position) (new-read-position stream)
+  "Set the stream's read position to a new value."
+  (setf (gethash stream *stream-read-positions*) new-read-position))
+
+(defmacro with-binary-readers ((stream endianness align u8 u16 u32 u64) &body forms)
+  "Evaluate forms with functions to read binary data from the stream
+in a given endianness.
+
+  STREAM
+
+    A form evaluating to a binary input stream.
+
+  ENDIANNESS
+
+    A form evaluating to either :LITTLE-ENDIAN or :BIG-ENDIAN.
+
+  ALIGN
+
+    A name to be bound to a function that takes an integer and ensures
+    the stream's read position is aligned to it.  It does so by
+    reading and ignoring the appropriate number of octets.
+
+  U8, U16, U32, U64
+
+    Names to be bound to functions that read 8-, 16-, 32-, and 64-bit
+    unsigned byte values, respectively, from the stream, in the
+    appropriate endianness.  The read position is ensured to be
+    naturally aligned before reading the value."
+  (once-only (stream)
+    (with-gensyms (body-function-name u8-var u16-var u32-var u64-var)
+      `(flet ((,body-function-name (,u8-var ,u16-var ,u32-var ,u64-var)
+                (labels ((,align (n)
+                           (loop until (zerop (mod (stream-read-position ,stream) n)) do (,u8)))
+                         (,u8 ()
+                           (funcall ,u8-var))
+                         (,u16 ()
+                           (,align 2)
+                           (funcall ,u16-var))
+                         (,u32 ()
+                           (,align 4)
+                           (funcall ,u32-var))
+                         (,u64 ()
+                           (,align 8)
+                           (funcall ,u64-var)))
+                  (declare (inline ,align ,u8 ,u16 ,u32 ,u64))
+                  ,@forms)))
+         (ecase ,endianness
+           (:little-endian
+            (macrolet ((u (size)
+                         `(lambda ()
+                            (let ((value 0))
+                              ,@(loop for i from 0 below size by 8
+                                      collect `(setf (ldb (byte 8 ,i) value)
+                                                     (read-byte ,',stream)))
+                              (incf (stream-read-position ,',stream) ,(floor size 8))
+                              value))))
+              (,body-function-name (u 8) (u 16) (u 32) (u 64))))
+           (:big-endian
+            (macrolet ((u (size)
+                         `(lambda ()
+                            (let ((value 0))
+                              ,@(loop for i from (- size 8) downto 0 by 8
+                                      collect `(setf (ldb (byte 8 ,i) value)
+                                                     (read-byte ,',stream)))
+                              (incf (stream-read-position ,',stream) ,(floor size 8))
+                              value))))
+              (,body-function-name (u 8) (u 16) (u 32) (u 64)))))))))
+  
+(defun signed-to-unsigned (value size)
+  "Return the unsigned representation of a signed byte with a given
+size."
+  (ldb (byte size 0) value))
+
+(defun unsigned-to-signed (value size)
+  "Return the signed representation of an unsigned byte with a given
+size."
+  (if (logbitp (1- size) value)
+      (dpb value (byte size 0) -1)
+      value))
+
+(defun double-to-unsigned (value)
+  "Return an unsigned 64-bit byte representing the double-float value
+passed."
+  (logior (ash (signed-to-unsigned (sb-kernel:double-float-high-bits value) 32) 32)
+          (sb-kernel:double-float-low-bits value)))
+
+(defun unsigned-to-double (value)
+  "Return the double-float value represented by the unsigned 64-bit
+byte supplied."
+  (sb-kernel:make-double-float
+   (unsigned-to-signed (ldb (byte 32 32) value) 32)
+   (ldb (byte 32 0) value)))
+
 
 ;;;; Protocol classes and generic functions
 
@@ -773,3 +930,101 @@ character stream."
         ((cons (eql :struct)) (out #\() (format-sigexp-to-stream (cdr type) stream) (out #\)))
         ((eql :variant) (out #\v))
         ((cons (eql :dict-entry)) (out #\{) (format-sigexp-to-stream (cdr type) stream) (out #\}))))))
+
+
+;;;; Packing and unpacking
+
+(defun pack (stream endianness sigexp &rest values)
+  "Pack values according to the signature expression and endianness
+into stream."
+  (with-binary-writers (stream endianness align u8 u16 u32 u64)
+    (labels ((str (value)
+               (let ((octets (babel:string-to-octets value :encoding :utf-8)))
+                 (u32 (length octets))
+                 (map nil #'u8 octets)
+                 (u8 0)))
+             (sig (value)
+               (let ((octets (babel:string-to-octets value :encoding :utf-8)))
+                 (u8 (length octets))
+                 (map nil #'u8 octets)
+                 (u8 0)))
+             (arr (element-type value)
+               (align 4)
+               (let ((length-position (file-position stream)))
+                 (u32 0)
+                 (typecase element-type
+                   ((or (member :int64 :uint64 :double)
+                        (cons (member :struct :dict-entry)))
+                    (align 8)))
+                 (let ((start-position (file-position stream)))
+                   (pack-seq (circular-list element-type) value)
+                   (let ((end-position (file-position stream)))
+                     (file-position stream length-position)
+                     (u32 (- end-position start-position))
+                     (file-position stream end-position)))))
+             (struct (field-types value)
+               (align 8)
+               (map nil (lambda (type element)
+                          (pack-1 type element))
+                    field-types value))
+             (var (type value)
+               (pack-1 :signature type)
+               (pack-1 (first type) value))
+             (pack-1 (type value)
+               (etypecase type
+                 ((eql :byte) (u8 value))
+                 ((eql :boolean) (u32 (if value 1 0)))
+                 ((eql :int16) (u16 (signed-to-unsigned value 16)))
+                 ((eql :uint16) (u16 value))
+                 ((eql :int32) (u32 (signed-to-unsigned value 32)))
+                 ((eql :uint32) (u32 value))
+                 ((eql :int64) (u64 (signed-to-unsigned value 64)))
+                 ((eql :uint64) (u64 value))
+                 ((eql :double) (u64 (double-to-unsigned (float value 0.0d0))))
+                 ((member :string :object-path) (str value))
+                 ((eql :signature) (sig (signature value)))
+                 ((cons (eql :array)) (arr (second type) value))
+                 ((cons (member :struct :dict-entry)) (struct (rest type) value))
+                 ((eql :variant) (var (sigexp (first value)) (second value)))))
+             (pack-seq (types values)
+               (map nil #'pack-1 types values)))
+      (pack-seq (sigexp sigexp) values))))
+
+(defun unpack (stream endianness sigexp)
+  "Unpack values from stream according to endianness and the signature
+expression and return them as a list."
+  (with-binary-readers (stream endianness align u8 u16 u32 u64)
+    (labels ((str (length)
+               (prog1
+                   (babel:octets-to-string
+                    (map-into (make-octet-vector length) #'u8)
+                    :encoding :utf-8)
+                 (u8)))
+             (arr (element-type length)
+               (loop with start = (stream-read-position stream)
+                     with end = (+ start length)
+                     until (= end (stream-read-position stream))
+                     collect (unpack-1 element-type)))
+             (struct (field-types)
+               (align 8)
+               (unpack-seq field-types))
+             (unpack-1 (type)
+               (etypecase type
+                 ((eql :byte) (u8))
+                 ((eql :boolean) (if (zerop (u32)) nil t))
+                 ((eql :int16) (unsigned-to-signed (u16) 16))
+                 ((eql :uint16) (u16))
+                 ((eql :int32) (unsigned-to-signed (u32) 32))
+                 ((eql :uint32) (u32))
+                 ((eql :int64) (unsigned-to-signed (u64) 64))
+                 ((eql :uint64) (u64))
+                 ((eql :double) (unsigned-to-double (u64)))
+                 ((member :string :object-path) (str (u32)))
+                 ((eql :signature) (str (u8)))
+                 ((cons (eql :array)) (arr (second type) (u32)))
+                 ((cons (member :struct :dict-entry)) (struct (rest type)))
+                 ((eql :variant) (unpack-1 (first (sigexp (str (u8))))))))
+             (unpack-seq (types)
+               (map 'list #'unpack-1 types)))
+      (unpack-seq (sigexp sigexp)))))
+
