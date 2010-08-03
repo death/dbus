@@ -342,10 +342,11 @@ address."))
   (:documentation "Return the value of the server address's property
 with the supplied name."))
 
-(defgeneric open-connection (server-address &key if-failed)
+(defgeneric open-connection (event-base server-address &key if-failed)
   (:documentation "Open a connection to the server designated by the
 server address and return a connection object.  The default value for
-IF-FAILED is :ERROR.  Should also send the initial \"nul byte\"."))
+IF-FAILED is :ERROR.  An IOLIB event base object must be passed.
+Should also send the initial \"nul byte\"."))
 
 (defgeneric connection-server-address (connection)
   (:documentation "Return the address of the server associated with
@@ -360,17 +361,45 @@ the connection."))
 connection.  If an ID is already set and is not EQUAL to the new ID,
 signal a continuable error."))
 
+(defgeneric connection-fd (connection)
+  (:documentation "Return the file descriptor associated with
+the (open) connection."))
+
+(defgeneric connection-pending-messages (connection)
+  (:documentation "Return a list of the currently pending messages
+associated with the connection, from newest to oldest."))
+
+(defgeneric (setf connection-pending-messages) (new-list connection)
+  (:documentation "Set the list of currently pending messages
+associated with the connection."))
+
 (defgeneric connection-next-serial (connection)
   (:documentation "Return a 32-bit integer for associating request
 messages and their replies."))
 
+(defgeneric drain-pending-messages (connection)
+  (:documentation "Return a list of the currently pending messages
+associated with the connection, from oldest to newest, and consider
+these messages no longer pending."))
+
 (defgeneric close-connection (connection)
   (:documentation "Close an open connection."))
+
+(defgeneric wait-for-reply (serial connection)
+  (:documentation "Wait for a reply message with the supplied serial
+to be received via connection."))
+
+(defgeneric receive-message (connection)
+  (:documentation "Read a D-BUS message from the server."))
 
 (defgeneric receive-line (connection)
   (:documentation "Read a line of text from the server and return it as
 a string.  The operation blocks until a whole line can be read.  The
 string will not contain newline characters."))
+
+(defgeneric send-message (encoded-message connection)
+  (:documentation "Send an encoded message to the server.  The
+operation will force (but not finish) output before returning."))
 
 (defgeneric send-line (line connection)
   (:documentation "Send a line of text, represented by a string, to
@@ -450,14 +479,22 @@ class names)."
   :find find-authentication-mechanism-class)
 
 
-;;;; Convenience methods
+;;;; Convenience
 
-(defmethod open-connection ((addresses list) &key (if-failed :error))
+(defmethod open-connection (event-base (addresses list) &key (if-failed :error))
   (with-if-failed-handler if-failed
     (or (some (lambda (address)
-                (open-connection address :if-failed nil))
+                (open-connection event-base address :if-failed nil))
               addresses)
         (error "No server addresses left to try to open."))))
+
+
+(defmacro with-open-connection ((connection event-base server-addresses &key (if-failed :error)) &body forms)
+  `(let ((,connection (open-connection ,event-base ,server-addresses :if-failed ,if-failed)))
+     (unwind-protect
+          (progn ,@forms)
+       (when ,connection
+         (close-connection ,connection)))))
 
 
 ;;;; Server addresses
@@ -468,8 +505,10 @@ class names)."
   (:documentation "Represents a standard server address with a
 transport name and a table of properties."))
 
-(defmethod open-connection :around ((server-address standard-server-address)
+(defmethod open-connection :around (event-base
+                                    (server-address standard-server-address)
                                     &key (if-failed :error))
+  (declare (ignore event-base))
   (with-if-failed-handler if-failed
     (call-next-method)))
 
@@ -483,8 +522,8 @@ transport name and a table of properties."))
   (:documentation "Represents a server address whose transport is not
 supported by the DBUS system."))
 
-(defmethod open-connection ((address generic-server-address) &key (if-failed :error))
-  (declare (ignore if-failed))
+(defmethod open-connection (event-base (address generic-server-address) &key (if-failed :error))
+  (declare (ignore event-base if-failed))
   (error "Unsupported transport mechanism for ~S." address))
 
 (defun parse-server-addresses-from-stream (in)
@@ -580,6 +619,8 @@ server addresses."
 (defclass standard-connection (connection)
   ((server-address :initarg :server-address :reader connection-server-address)
    (uuid :initarg :uuid :accessor connection-server-uuid)
+   (pending-messages :initform '() :accessor connection-pending-messages)
+   (event-base :initarg :event-base :reader connection-event-base)
    (serial :initform 1))
   (:default-initargs :uuid nil)
   (:documentation "Represents a standard DBUS connection."))
@@ -597,6 +638,82 @@ server addresses."
             (let ((x (logand (1+ serial) #xFFFFFFFF)))
               (if (zerop x) 1 x))))))
 
+(defmethod drain-pending-messages ((connection standard-connection))
+  (prog1 (nreverse (connection-pending-messages connection))
+    (setf (connection-pending-messages connection) '())))
+
+(defmethod wait-for-reply (serial (connection standard-connection))
+  (let ((reply nil))
+    (flet ((reply-p (message)
+             (when (and (typep message '(or error-message method-return-message))
+                        (= serial (message-reply-serial message)))
+               (setf reply message))))
+      (with-accessors ((pending-messages connection-pending-messages)) connection
+        (setf pending-messages (delete-if (lambda (message) (reply-p message)) pending-messages))
+        (unless reply
+          (loop
+           (iolib:event-dispatch (connection-event-base connection) :one-shot t)
+           (when (reply-p (first pending-messages))
+             (pop pending-messages)
+             (return))))))
+    (values (message-body reply) reply)))
+
+(defun activate-io-handlers (connection)
+  (iolib:set-io-handler
+   (connection-event-base connection)
+   (connection-fd connection)
+   :read
+   (lambda (fd event error)
+     (declare (ignore fd event))
+     (if error
+         (error "Connection I/O error: ~S." error)
+         (push (receive-message connection) (connection-pending-messages connection))))))
+
+(defmethod authenticate :around (mechanisms (connection standard-connection) &key (if-failed :error))
+  (with-if-failed-handler if-failed
+    (when (call-next-method)
+      (activate-io-handlers connection)
+      t)))
+
+
+;;;; Socket-based connection mixin
+
+(defclass socket-connection-mixin ()
+  ((socket :initarg :socket :reader connection-socket)))
+
+(defun open-socket-connection (address-family socket-address)
+  (let ((socket (iolib:make-socket :address-family address-family
+                                   :external-format '(:utf-8 :eol-style :crlf))))
+    (unwind-protect
+         (progn
+           (iolib:connect socket socket-address)
+           (write-byte 0 socket)
+           (force-output socket)
+           (prog1 socket
+             (setf socket nil)))
+      (when socket
+        (close socket)))))
+
+(defmethod connection-fd ((connection socket-connection-mixin))
+  (iolib:fd-of (connection-socket connection)))
+
+(defmethod close-connection ((connection socket-connection-mixin))
+  (close (connection-socket connection)))
+
+(defmethod receive-message ((connection socket-connection-mixin))
+  (decode-message (connection-socket connection)))
+
+(defmethod receive-line ((connection socket-connection-mixin))
+  (read-line (connection-socket connection)))
+
+(defmethod send-line (line (connection socket-connection-mixin))
+  (write-line line (connection-socket connection))
+  (force-output (connection-socket connection)))
+
+(defmethod send-message (encoded-message (connection socket-connection-mixin))
+  (write-sequence encoded-message (connection-socket connection))
+  (force-output (connection-socket connection)))
+   
 
 ;;;; Authentication mechanisms
 
@@ -703,53 +820,53 @@ return the argument; otherwise, signal an authentication error."
           (receive-authentication-response connection :expect :rejected)))
 
 (defmethod authenticate (mechanisms (connection standard-connection) &key (if-failed :error))
-  (with-if-failed-handler if-failed
-    (setf mechanisms (ensure-list mechanisms))
-    (let (op arg mechanism)
-      (flet ((send (command &rest args)
-               (apply #'send-authentication-command connection command args))
-             (receive ()
-               (receive-authentication-response connection :as-string (authentication-mechanism-textual-p mechanism))))
-        (tagbody
-         initial
-           (if (null mechanisms)
-               (error "No more mechanisms to try.")
-               (setf mechanism (pop mechanisms)))
-           (multiple-value-setq (op arg) (feed-authentication-mechanism mechanism :initial-response))
-           (when (eq op :error)
-             (go initial))
-           (send :auth (authentication-mechanism-name mechanism) arg)
-           (ecase op
-             (:ok (go waiting-for-ok))
-             (:continue (go waiting-for-data)))
-         waiting-for-data
-           (multiple-value-setq (op arg) (receive))
-           (case op
-             (:data
-              (multiple-value-setq (op arg) (feed-authentication-mechanism mechanism arg))
-              (ecase op
-                (:continue (send :data arg) (go waiting-for-data))
-                (:ok (send :data arg) (go waiting-for-ok))
-                (:error (if arg (send :error arg) (send :error)) (go waiting-for-data))))
-             (:rejected (go initial))
-             (:error (send :cancel) (go waiting-for-reject))
-             (:ok (send :begin) (go authenticated))
-             (t (send :error) (go waiting-for-data)))
-         waiting-for-ok
-           (multiple-value-setq (op arg) (receive))
-           (case op
-             (:ok (send :begin) (go authenticated))
-             (:reject (go initial))
-             ((:data :error) (send :cancel) (go waiting-for-reject))
-             (t (send :error) (go waiting-for-ok)))
-         waiting-for-reject
-           (multiple-value-setq (op arg) (receive))
-           (case op
-             (:reject (go initial))
-             (t (error 'authentication-error :command op :argument arg)))
-         authenticated
-           (setf (connection-server-uuid connection) arg))))
-    t))
+  (declare (ignore if-failed))
+  (setf mechanisms (ensure-list mechanisms))
+  (let (op arg mechanism)
+    (flet ((send (command &rest args)
+             (apply #'send-authentication-command connection command args))
+           (receive ()
+             (receive-authentication-response connection :as-string (authentication-mechanism-textual-p mechanism))))
+      (tagbody
+       initial
+         (if (null mechanisms)
+             (error "No more mechanisms to try.")
+             (setf mechanism (pop mechanisms)))
+         (multiple-value-setq (op arg) (feed-authentication-mechanism mechanism :initial-response))
+         (when (eq op :error)
+           (go initial))
+         (send :auth (authentication-mechanism-name mechanism) arg)
+         (ecase op
+           (:ok (go waiting-for-ok))
+           (:continue (go waiting-for-data)))
+       waiting-for-data
+         (multiple-value-setq (op arg) (receive))
+         (case op
+           (:data
+            (multiple-value-setq (op arg) (feed-authentication-mechanism mechanism arg))
+            (ecase op
+              (:continue (send :data arg) (go waiting-for-data))
+              (:ok (send :data arg) (go waiting-for-ok))
+              (:error (if arg (send :error arg) (send :error)) (go waiting-for-data))))
+           (:rejected (go initial))
+           (:error (send :cancel) (go waiting-for-reject))
+           (:ok (send :begin) (go authenticated))
+           (t (send :error) (go waiting-for-data)))
+       waiting-for-ok
+         (multiple-value-setq (op arg) (receive))
+         (case op
+           (:ok (send :begin) (go authenticated))
+           (:reject (go initial))
+           ((:data :error) (send :cancel) (go waiting-for-reject))
+           (t (send :error) (go waiting-for-ok)))
+       waiting-for-reject
+         (multiple-value-setq (op arg) (receive))
+         (case op
+           (:reject (go initial))
+           (t (error 'authentication-error :command op :argument arg)))
+       authenticated
+         (setf (connection-server-uuid connection) arg))))
+  t)
 
 
 ;;;; Unix Domain Sockets
@@ -771,37 +888,18 @@ Sockets for transport."))
                                   :family :local
                                   :abstract (if abstract t nil))))))
 
-(defclass unix-connection (standard-connection)
-  ((socket :initarg :socket :reader connection-socket))
+(defclass unix-connection (socket-connection-mixin standard-connection)
+  ()
   (:documentation "Represents a connection to a DBUS server over Unix
 Domain Sockets."))
 
-(defmethod open-connection ((address unix-server-address) &key (if-failed :error))
+(defmethod open-connection (event-base (address unix-server-address) &key (if-failed :error))
   (declare (ignore if-failed))
-  (let ((socket (iolib:make-socket :address-family :local
-                                   :external-format '(:utf-8 :eol-style :crlf))))
-    (unwind-protect
-         (prog1
-             (make-instance 'unix-connection
-                            :socket socket
-                            :server-address address
-                            :uuid (server-address-property "guid" address :if-does-not-exist nil))
-           (iolib:connect socket (server-address-socket-address address))
-           (write-byte 0 socket)
-           (force-output socket)
-           (setf socket nil))
-      (when socket
-        (close socket)))))
-
-(defmethod close-connection ((connection unix-connection))
-  (close (connection-socket connection)))
-
-(defmethod send-line (line (connection unix-connection))
-  (write-line line (connection-socket connection))
-  (force-output (connection-socket connection)))
-
-(defmethod receive-line ((connection unix-connection))
-  (read-line (connection-socket connection)))
+  (make-instance 'unix-connection
+                 :socket (open-socket-connection :local (server-address-socket-address address))
+                 :server-address address
+                 :uuid (server-address-property "guid" address :if-does-not-exist nil)
+                 :event-base event-base))
 
 
 ;;;; DBUS Cookie SHA1 authentication mechanism

@@ -19,9 +19,15 @@
    #:open-connection
    #:connection-server-address
    #:connection-server-uuid
+   #:connection-fd
+   #:connection-pending-messages
    #:connection-next-serial
+   #:drain-pending-messages
    #:close-connection
+   #:wait-for-reply
+   #:receive-message
    #:receive-line
+   #:send-message
    #:send-line
    #:authentication-mechanism-name
    #:authentication-mechanism-textual-p
@@ -30,12 +36,15 @@
    #:authenticate
    #:find-server-address-class
    #:find-authentication-mechanism-class
+   #:with-open-connection
    #:standard-server-address
    #:generic-server-address
    #:parse-server-addresses-string
    #:session-server-addresses
    #:system-server-addresses
    #:standard-connection
+   #:socket-connection-mixin
+   #:open-socket-connection
    #:standard-authentication-mechanism
    #:generic-authentication-mechanism
    #:authentication-error
