@@ -78,4 +78,5 @@
    #:message-reply-serial
    #:error-message
    #:message-error-name
-   #:decode-message))
+   #:decode-message
+   #:invoke-method))

@@ -1238,3 +1238,35 @@ expression and return them as a list."
               (3 (make-message 'error-message :error-name error-name :reply-serial reply-serial))
               (4 (make-message 'signal-message :path path :interface interface :member member))
               (t (warn "Unknown message type code ~D; ignoring message." type-code)))))))))
+
+
+;;;; Low-level way to invoke D-BUS methods
+
+(defun invoke-method (connection member &key path signature arguments interface destination
+                      no-reply no-auto-start asynchronous (endianness :little-endian))
+  (let ((serial (connection-next-serial connection)))
+    (send-message
+     (encode-message endianness :method-call
+                     (logior (if no-reply message-no-reply-expected 0)
+                             (if no-auto-start message-no-auto-start 0))
+                     1 serial path interface member nil nil
+                     destination nil signature arguments)
+     connection)
+    (if (or no-reply asynchronous)
+        serial
+        (wait-for-reply serial connection))))
+
+(defun test-invoke-method ()
+  (iolib:with-event-base (event-base)
+    (with-open-connection (connection event-base (session-server-addresses))
+      (authenticate (supported-authentication-mechanisms connection) connection)
+      (invoke-method connection "Hello"
+                     :path "/org/freedesktop/DBus"
+                     :interface "org.freedesktop.DBus"
+                     :destination "org.freedesktop.DBus")
+      (invoke-method connection "Notify"
+                     :path "/org/freedesktop/Notifications"
+                     :interface "org.freedesktop.Notifications"
+                     :destination "org.freedesktop.Notifications"
+                     :signature "susssasa{sv}i"
+                     :arguments (list "Test" 0 "" "Test" "This is a test; I repeat, this is a test." '() '() -1)))))
