@@ -47,4 +47,26 @@
    #:signature
    #:sigexp
    #:pack
-   #:unpack))
+   #:unpack
+   #:encode-message
+   #:message
+   #:standard-message
+   #:message-endianness
+   #:message-flags
+   #:message-major-protocol-version
+   #:message-body-length
+   #:message-serial
+   #:message-destination
+   #:message-sender
+   #:message-signature
+   #:message-body
+   #:method-call-message
+   #:message-path
+   #:message-interface
+   #:message-member
+   #:signal-message
+   #:method-return-message
+   #:message-reply-serial
+   #:error-message
+   #:message-error-name
+   #:decode-message))
