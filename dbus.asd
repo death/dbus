@@ -12,4 +12,15 @@
   :serial t
   :components
   ((:file "packages")
-   (:file "dbus")))
+   #+sbcl (:file "dbus-sbcl")
+   (:file "utils")
+   (:file "protocols")
+   (:file "conditions")
+   (:file "type-signatures")
+   (:file "messages")
+   (:file "server-addresses")
+   (:file "authentication-mechanisms")
+   (:file "connections")
+   (:file "transport-unix")
+   (:file "auth-dbus-cookie-sha1")
+   (:file "convenience")))
