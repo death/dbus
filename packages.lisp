@@ -42,6 +42,8 @@
    #:authentication-error
    #:authentication-error-command
    #:authentication-error-argument
+   #:method-error
+   #:method-error-arguments
    ;; Type signatures
    #:sigexp
    #:signature

@@ -19,4 +19,8 @@
      connection)
     (if (or no-reply asynchronous)
         serial
-        (wait-for-reply serial connection))))
+        (multiple-value-bind (body message)
+            (wait-for-reply serial connection)
+          (etypecase message
+            (method-return-message (values-list body))
+            (error-message (error 'method-error :arguments body)))))))
