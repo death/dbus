@@ -3,10 +3,16 @@
 ;;;; +----------------------------------------------------------------+
 
 (defpackage #:dbus
-  (:use #:cl #:alexandria #:split-sequence #:xspam)
-  (:shadow
-   #:method
-   #:make-method)
+  (:use #:cl)
+  (:import-from #:split-sequence #:split-sequence)
+  (:import-from #:alexandria
+                #:circular-list #:ensure-list #:plist-hash-table
+                #:starts-with-subseq #:when-let #:with-gensyms
+                #:once-only #:hash-table-values)
+  (:import-from #:xspam
+                #:with-xspam-source #:make-xspam-source #:element
+                #:one-or-more #:attribute #:_ #:zero-or-more)
+  (:shadow #:method #:make-method)
   (:export
    ;; Utilities
    #:inexistent-entry
