@@ -7,7 +7,7 @@
 ;;; -*- Mode: LISP; Syntax: COMMON-LISP; Package: CL-USER; Base: 10 -*-
 
 (asdf:defsystem #:dbus
-  :depends-on (#:alexandria #:babel #:flexi-streams
+  :depends-on (#:alexandria #:babel #:cl-xmlspam #:flexi-streams
                #:iolib #:ironclad #:split-sequence)
   :serial t
   :components
@@ -21,5 +21,7 @@
    (:file "server-addresses")
    (:file "authentication-mechanisms")
    (:file "connections")
+   (:file "introspect")
+   (:file "convenience")
    (:file "transport-unix")
    (:file "auth-dbus-cookie-sha1")))

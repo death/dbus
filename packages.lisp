@@ -3,7 +3,10 @@
 ;;;; +----------------------------------------------------------------+
 
 (defpackage #:dbus
-  (:use #:cl #:alexandria #:split-sequence)
+  (:use #:cl #:alexandria #:split-sequence #:xspam)
+  (:shadow
+   #:method
+   #:make-method)
   (:export
    ;; Utilities
    #:inexistent-entry
@@ -91,6 +94,27 @@
    #:standard-connection
    #:socket-connection-mixin
    #:open-socket-connection
+   ;; Introspection
+   #:object-connection
+   #:object-path
+   #:object-destination
+   #:object-interface
+   #:list-object-interfaces
+   #:interface-name
+   #:interface-method
+   #:list-interface-methods
+   #:method-name
+   #:method-signature
+   #:parse-introspection-document
+   #:make-object-from-introspection
+   #:object-invoke
+   ;; Convenience
+   #:hello
+   #:bus
+   #:bus-connection
+   #:bus-name
+   #:with-open-bus
+   #:with-introspected-object
    ;; Unix Domain Sockets transport
    #:unix-server-address
    #:unix-connection

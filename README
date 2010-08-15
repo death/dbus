@@ -3,6 +3,7 @@ DBUS - A D-BUS client library for Common Lisp
 Prerequisites:
   Alexandria
   Babel
+  CL-XmlSpam
   Flexi-Streams
   IOLib
   Ironclad
