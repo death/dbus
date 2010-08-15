@@ -213,3 +213,24 @@ expression and return them as a list."
               (3 (make-message 'error-message :error-name error-name :reply-serial reply-serial))
               (4 (make-message 'signal-message :path path :interface interface :member member))
               (t (warn "Unknown message type code ~D; ignoring message." type-code)))))))))
+
+
+;;;; Low-level way to invoke D-BUS methods
+
+(defun invoke-method (connection member &key path signature arguments interface destination
+                      no-reply no-auto-start asynchronous (endianness :little-endian))
+  (let ((serial (connection-next-serial connection)))
+    (send-message
+     (encode-message endianness :method-call
+                     (logior (if no-reply message-no-reply-expected 0)
+                             (if no-auto-start message-no-auto-start 0))
+                     1 serial path interface member nil nil
+                     destination nil signature arguments)
+     connection)
+    (if (or no-reply asynchronous)
+        serial
+        (multiple-value-bind (body message)
+            (wait-for-reply serial connection)
+          (etypecase message
+            (method-return-message (values-list body))
+            (error-message (error 'method-error :arguments body)))))))

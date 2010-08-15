@@ -74,6 +74,7 @@
    #:message-no-reply-expected
    #:message-no-auto-start
    #:decode-message
+   #:invoke-method
    ;; Server addresses
    #:find-server-address-class
    #:standard-server-address
@@ -94,6 +95,4 @@
    #:unix-server-address
    #:unix-connection
    ;; DBUS Cookie SHA1 authentication mechanism
-   #:dbus-cookie-sha1-authentication-mechanism
-   ;; Convenience
-   #:invoke-method))
+   #:dbus-cookie-sha1-authentication-mechanism))

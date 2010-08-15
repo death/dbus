@@ -22,5 +22,4 @@
    (:file "authentication-mechanisms")
    (:file "connections")
    (:file "transport-unix")
-   (:file "auth-dbus-cookie-sha1")
-   (:file "convenience")))
+   (:file "auth-dbus-cookie-sha1")))
