@@ -24,7 +24,7 @@
 
 (defmacro with-open-bus ((bus-var server-addresses &key event-base) &body forms)
   (if (null event-base)
-      (let ((event-base (gensym)))
+      (with-gensyms (event-base)
         `(iolib:with-event-base (,event-base)
            (with-open-bus (,bus-var ,server-addresses :event-base ,event-base)
              ,@forms)))

@@ -18,30 +18,6 @@
     (format stream "~S" (object-path object)))
   object)
 
-(defclass interface ()
-  ((name :initarg :name :reader interface-name)
-   (methods :initform (make-hash-table :test 'equal) :reader interface-methods)))
-
-(defmethod print-object ((interface interface) stream)
-  (print-unreadable-object (interface stream :type t)
-    (format stream "~S" (interface-name interface)))
-  interface)
-
-(defclass method ()
-  ((name :initarg :name :reader method-name)
-   (signature :initarg :signature :reader method-signature)))
-
-(defmethod print-object ((method method) stream)
-  (print-unreadable-object (method stream :type t)
-    (format stream "~S" (method-name method)))
-  method)
-
-(defun interface-method (name interface)
-  (gethash name (interface-methods interface)))
-
-(defun (setf interface-method) (method name interface)
-  (setf (gethash name (interface-methods interface)) method))
-
 (defun object-interface (name object)
   (gethash name (object-interfaces object)))
 
@@ -51,20 +27,44 @@
 (defun list-object-interfaces (object)
   (hash-table-values (object-interfaces object)))
 
-(defun list-interface-methods (interface)
-  (hash-table-values (interface-methods interface)))
-
 (defun make-object (connection path destination interfaces)
   (let ((object (make-instance 'object :connection connection :path path :destination destination)))
     (dolist (interface interfaces)
       (setf (object-interface (interface-name interface) object) interface))
     object))
 
+(defclass interface ()
+  ((name :initarg :name :reader interface-name)
+   (methods :initform (make-hash-table :test 'equal) :reader interface-methods)))
+
+(defmethod print-object ((interface interface) stream)
+  (print-unreadable-object (interface stream :type t)
+    (format stream "~S" (interface-name interface)))
+  interface)
+
+(defun interface-method (name interface)
+  (gethash name (interface-methods interface)))
+
+(defun (setf interface-method) (method name interface)
+  (setf (gethash name (interface-methods interface)) method))
+
+(defun list-interface-methods (interface)
+  (hash-table-values (interface-methods interface)))
+
 (defun make-interface (name methods)
   (let ((interface (make-instance 'interface :name name)))
     (dolist (method methods)
       (setf (interface-method (method-name method) interface) method))
     interface))
+
+(defclass method ()
+  ((name :initarg :name :reader method-name)
+   (signature :initarg :signature :reader method-signature)))
+
+(defmethod print-object ((method method) stream)
+  (print-unreadable-object (method stream :type t)
+    (format stream "~S" (method-name method)))
+  method)
 
 (defun make-method (name signature)
   (make-instance 'method :name name :signature signature))
