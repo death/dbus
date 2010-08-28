@@ -57,8 +57,8 @@ determines how to find out:
 
   :ERROR
 
-    Signal an ENTRY-ALREADY-EXISTS error with a CONTINUE restart to
-    replace the entry, and an ABORT restart to not replace it.
+    Signal an ENTRY-REPLACEMENT-ATTEMPT error with a CONTINUE restart
+    to replace the entry, and an ABORT restart to not replace it.
 
   :WARN
 
