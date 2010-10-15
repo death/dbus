@@ -10,7 +10,7 @@
 (defun pack (stream endianness sigexp &rest values)
   "Pack values according to the signature expression and endianness
 into stream."
-  (with-binary-writers (stream endianness align u8 u16 u32 u64)
+  (with-binary-writers (stream endianness)
     (labels ((str (value)
                (let ((octets (babel:string-to-octets value :encoding :utf-8)))
                  (u32 (length octets))
@@ -66,7 +66,7 @@ into stream."
 (defun unpack (stream endianness sigexp)
   "Unpack values from stream according to endianness and the signature
 expression and return them as a list."
-  (with-binary-readers (stream endianness align u8 u16 u32 u64)
+  (with-binary-readers (stream endianness)
     (labels ((str (length)
                (prog1
                    (babel:octets-to-string
@@ -127,7 +127,7 @@ expression and return them as a list."
                                    reply-serial destination sender signature)
                 for type across "osssussg"
                 when value collect (list code (list (string type) value))))
-    (with-binary-writers (out endianness align u8 u16 u32 u64)
+    (with-binary-writers (out endianness)
       (align 8)
       (let ((body-start (file-position out)))
         (apply #'pack out endianness (or signature "") body)
@@ -179,7 +179,7 @@ expression and return them as a list."
     (destructuring-bind (type-code flags major-protocol-version
                                    body-length serial fields)
         (unpack stream endianness "yyyuua(yv)")
-      (with-binary-readers (stream endianness align u8 u16 u32 u64)
+      (with-binary-readers (stream endianness)
         (align 8)
         (let (body path interface member error-name
                    reply-serial destination sender signature)
