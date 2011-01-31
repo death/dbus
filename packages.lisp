@@ -11,7 +11,8 @@
                 #:once-only #:hash-table-values)
   (:import-from #:xspam
                 #:with-xspam-source #:make-xspam-source #:element
-                #:one-or-more #:attribute #:_ #:zero-or-more)
+                #:one-or-more #:attribute #:_ #:zero-or-more
+                #:optional-attribute)
   (:shadow #:method #:make-method)
   (:export
    ;; Utilities

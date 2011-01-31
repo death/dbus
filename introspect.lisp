@@ -73,6 +73,10 @@
   (declare (ignore a b))
   (flexi-streams:make-in-memory-input-stream nil))
 
+(defmacro defaulted-attribute (name default-value &body forms)
+  `(let ((_ (or (optional-attribute ,name _) ,default-value)))
+     ,@forms))
+  
 (defun parse-introspection-document (input)
   (with-xspam-source (make-xspam-source input :entity-resolver #'dont-resolve-entities)
     (element :node
@@ -89,7 +93,7 @@
                     (let ((signature (make-string-output-stream)))
                       (zero-or-more
                        (element :arg
-                         (attribute :direction
+                         (defaulted-attribute :direction "in"
                            (when (equal _ "in")
                              (attribute :type
                                (write-string _ signature))))))
