@@ -7,6 +7,17 @@
 
 ;;;; Packing and unpacking
 
+(defun alignment (type)
+  "Return the number of octets to which elements of the supplied type
+should be aligned."
+  (etypecase type
+    ((member :byte :signature :variant) 1)
+    ((member :int16 :uint16) 2)
+    ((or (member :boolean :int32 :uint32 :string :object-path)
+         (cons (member :array))) 4)
+    ((or (member :int64 :uint64 :double)
+         (cons (member :struct :dict-entry))) 8)))
+
 (defun pack (stream endianness sigexp &rest values)
   "Pack values according to the signature expression and endianness
 into stream."
@@ -22,13 +33,9 @@ into stream."
                  (map nil #'u8 octets)
                  (u8 0)))
              (arr (element-type value)
-               (align 4)
                (let ((length-position (file-position stream)))
                  (u32 0)
-                 (typecase element-type
-                   ((or (member :int64 :uint64 :double)
-                        (cons (member :struct :dict-entry)))
-                    (align 8)))
+                 (align (alignment element-type))
                  (let ((start-position (file-position stream)))
                    (pack-seq (circular-list element-type) value)
                    (let ((end-position (file-position stream)))
@@ -36,7 +43,6 @@ into stream."
                      (u32 (- end-position start-position))
                      (file-position stream end-position)))))
              (struct (field-types value)
-               (align 8)
                (map nil (lambda (type element)
                           (pack-1 type element))
                     field-types value))
@@ -44,6 +50,7 @@ into stream."
                (pack-1 :signature type)
                (pack-1 (first type) value))
              (pack-1 (type value)
+               (align (alignment type))
                (etypecase type
                  ((eql :byte) (u8 value))
                  ((eql :boolean) (u32 (if value 1 0)))
@@ -74,14 +81,15 @@ expression and return them as a list."
                     :encoding :utf-8)
                  (u8)))
              (arr (element-type length)
+               (align (alignment element-type))
                (loop with start = (stream-read-position stream)
                      with end = (+ start length)
                      until (= end (stream-read-position stream))
                      collect (unpack-1 element-type)))
              (struct (field-types)
-               (align 8)
                (unpack-seq field-types))
              (unpack-1 (type)
+               (align (alignment type))
                (etypecase type
                  ((eql :byte) (u8))
                  ((eql :boolean) (if (zerop (u32)) nil t))
