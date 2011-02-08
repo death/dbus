@@ -117,7 +117,7 @@
 (defun pack-string (stream endianness value length-size)
   "Pack DBUS string into stream."
   (with-binary-writers (stream endianness)
-    (let ((octets (babel:string-to-octets value :encoding :utf-8)))
+    (let ((octets (string-to-octets value :encoding :utf-8)))
       (ecase length-size
         (8 (u8 (length octets)))
         (32 (u32 (length octets))))
@@ -127,7 +127,7 @@
 (defun unpack-string (stream endianness length)
   "Unpack DBUS string from stream."
   (with-binary-readers (stream endianness)
-    (prog1 (babel:octets-to-string
+    (prog1 (octets-to-string
             (map-into (make-octet-vector length) #'u8)
             :encoding :utf-8)
       (u8))))

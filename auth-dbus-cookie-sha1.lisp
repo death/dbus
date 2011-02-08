@@ -50,5 +50,5 @@ of random octet values."
         (let* ((my-challenge-string (random-challenge-string))
                (cookie (find-cookie context-name cookie-id))
                (message (format nil "~A:~A:~A" challenge-string my-challenge-string cookie))
-               (digest (ironclad:digest-sequence :sha1 (babel:string-to-octets message :encoding :utf-8))))
+               (digest (digest-sequence :sha1 (string-to-octets message :encoding :utf-8))))
           (values :ok (format nil "~A ~A" my-challenge-string (encode-hex-string digest)))))))

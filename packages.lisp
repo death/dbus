@@ -13,6 +13,17 @@
                 #:with-xspam-source #:make-xspam-source #:element
                 #:one-or-more #:attribute #:_ #:zero-or-more
                 #:optional-attribute)
+  (:import-from #:babel #:string-to-octets #:octets-to-string)
+  (:import-from #:ironclad #:digest-sequence)
+  (:import-from #:iolib
+                #:event-dispatch #:set-io-handler #:make-socket
+                #:connect #:fd-of #:with-event-base
+                #:ensure-address)
+  (:import-from #:iolib.syscalls
+                #:getenv #:getpwuid #:getuid)
+  (:import-from #:flexi-streams
+                #:make-in-memory-input-stream
+                #:with-output-to-sequence)
   (:shadow #:method #:make-method)
   (:export
    ;; Utilities

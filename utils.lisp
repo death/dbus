@@ -99,7 +99,7 @@ START and END are bounding index designators for the data."
   (etypecase data
     (string
      (encode-hex-string
-      (babel:string-to-octets data :encoding :utf-8 :start start :end end)))
+      (string-to-octets data :encoding :utf-8 :start start :end end)))
     (vector
      (with-output-to-string (out)
        (loop for index from start below (or end (length data))
@@ -146,7 +146,7 @@ START and END are bounding index designators for the string."
 
 (defun current-username ()
   "Return the current user's name."
-  (nth-value 0 (iolib.syscalls:getpwuid (iolib.syscalls:getuid))))
+  (nth-value 0 (getpwuid (getuid))))
 
 (defmacro with-binary-writers ((stream endianness &key prefix) &body forms)
   "Evaluate forms with functions to write binary data to the stream in

@@ -50,14 +50,14 @@
         (setf pending-messages (delete-if (lambda (message) (reply-p message)) pending-messages))
         (unless reply
           (loop
-           (iolib:event-dispatch (connection-event-base connection) :one-shot t)
+           (event-dispatch (connection-event-base connection) :one-shot t)
            (when (reply-p (first pending-messages))
              (pop pending-messages)
              (return))))))
     (values (message-body reply) reply)))
 
 (defun activate-io-handlers (connection)
-  (iolib:set-io-handler
+  (set-io-handler
    (connection-event-base connection)
    (connection-fd connection)
    :read
@@ -138,11 +138,11 @@
   ((socket :initarg :socket :reader connection-socket)))
 
 (defun open-socket-connection (address-family socket-address)
-  (let ((socket (iolib:make-socket :address-family address-family
-                                   :external-format '(:utf-8 :eol-style :crlf))))
+  (let ((socket (make-socket :address-family address-family
+                             :external-format '(:utf-8 :eol-style :crlf))))
     (unwind-protect
          (progn
-           (iolib:connect socket socket-address)
+           (connect socket socket-address)
            (write-byte 0 socket)
            (force-output socket)
            (prog1 socket
@@ -151,7 +151,7 @@
         (close socket)))))
 
 (defmethod connection-fd ((connection socket-connection-mixin))
-  (iolib:fd-of (connection-socket connection)))
+  (fd-of (connection-socket connection)))
 
 (defmethod close-connection ((connection socket-connection-mixin))
   (close (connection-socket connection)))

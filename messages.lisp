@@ -11,7 +11,7 @@
                        serial path interface member error-name reply-serial
                        destination sender signature body)
   "Encode a DBUS message and return it as an octet vector."
-  (flexi-streams:with-output-to-sequence (out)
+  (with-output-to-sequence (out)
     (pack out endianness "yyyyuua(yv)"
           (ecase endianness
             (:little-endian (char-code #\l))

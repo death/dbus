@@ -114,7 +114,7 @@ may be the same as the string supplied if no unescaping is needed."
                                (digit-char-p (read-char in) 16))
                        (char-code char))
                    octets)))
-          (babel:octets-to-string octets :encoding :utf-8)))))
+          (octets-to-string octets :encoding :utf-8)))))
 
 (defun parse-server-addresses-string (string)
   "Parse a (possibly escaped) server addresses string into a list of
@@ -124,11 +124,11 @@ server addresses."
 
 (defun session-server-addresses ()
   "Return a list of server addresses for the current session."
-  (when-let (string (iolib.syscalls:getenv "DBUS_SESSION_BUS_ADDRESS"))
+  (when-let (string (getenv "DBUS_SESSION_BUS_ADDRESS"))
     (parse-server-addresses-string string)))
 
 (defun system-server-addresses ()
   "Return a list of server addresses for the current system."
   (parse-server-addresses-string
-   (or (iolib.syscalls:getenv "DBUS_SYSTEM_BUS_ADDRESS")
+   (or (getenv "DBUS_SYSTEM_BUS_ADDRESS")
        "unix:path=/var/run/dbus/system_bus_socket")))    

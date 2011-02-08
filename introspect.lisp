@@ -71,7 +71,7 @@
 
 (defun dont-resolve-entities (a b)
   (declare (ignore a b))
-  (flexi-streams:make-in-memory-input-stream nil))
+  (make-in-memory-input-stream nil))
 
 (defmacro defaulted-attribute (name default-value &body forms)
   `(let ((_ (or (optional-attribute ,name _) ,default-value)))

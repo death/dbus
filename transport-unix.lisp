@@ -20,9 +20,9 @@ Sockets for transport."))
         (path (server-address-property "path" address :if-does-not-exist nil)))
     (with-slots (socket-address) address
       (setf socket-address
-            (iolib:ensure-address (or abstract path)
-                                  :family :local
-                                  :abstract (if abstract t nil))))))
+            (ensure-address (or abstract path)
+                            :family :local
+                            :abstract (if abstract t nil))))))
 
 (defclass unix-connection (socket-connection-mixin standard-connection)
   ()
