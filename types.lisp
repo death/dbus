@@ -49,51 +49,52 @@
   (setf (gethash (dbus-type-signature type) (dbus-type-table-by-signature table)) type)
   table)
 
-(defun formatter/parser-for-type (name signature composite)
+(defun make-dbus-type-formatter/parser (name signature composite)
   (etypecase composite
     ((eql nil)
-     (values `(lambda (stream element-types)
-                (declare (ignore element-types))
-                (write-char ',signature stream))
-             `(lambda (stream)
-                (declare (ignore stream))
-                ',name)))
+     (values (lambda (stream element-types)
+               (declare (ignore element-types))
+               (write-char signature stream))
+             (lambda (stream)
+               (declare (ignore stream))
+               name)))
     ((eql t)
-     (values `(lambda (stream element-types)
-                (write-char ',signature stream)
-                (format-sigexp-to-stream element-types stream))
-             `(lambda (stream)
-                (cons ',name (parse-signature-from-stream stream nil 1)))))
+     (values (lambda (stream element-types)
+               (write-char signature stream)
+               (format-sigexp-to-stream element-types stream))
+             (lambda (stream)
+               (cons name (parse-signature-from-stream stream nil 1)))))
     (character
-     (values `(lambda (stream element-types)
-                (write-char ',signature stream)
-                (format-sigexp-to-stream element-types stream)
-                (write-char ',composite stream))
-             `(lambda (stream)
-                (prog1 (cons ',name (parse-signature-from-stream stream ',composite))
-                  (read-char stream)))))))
+     (values (lambda (stream element-types)
+               (write-char signature stream)
+               (format-sigexp-to-stream element-types stream)
+               (write-char composite stream))
+             (lambda (stream)
+               (prog1 (cons name (parse-signature-from-stream stream composite))
+                 (read-char stream)))))))
 
 (defmacro define-dbus-type (name &key signature composite alignment pack unpack)
-  (multiple-value-bind (formatter parser)
-      (formatter/parser-for-type name signature composite)
+  (with-gensyms (formatter parser)
     `(progn
        (register-dbus-type
-        (make-instance 'dbus-type
-                       :name ',name
-                       :signature ',signature
-                       :sigexp-formatter ,formatter
-                       :signature-parser ,parser
-                       :alignment ',alignment
-                       :packer (lambda (stream endianness element-types value)
-                                 (declare (ignorable element-types value))
-                                 (with-binary-writers (stream endianness)
-                                   (align ',alignment)
-                                   ,pack))
-                       :unpacker (lambda (stream endianness element-types)
-                                   (declare (ignorable element-types))
-                                   (with-binary-readers (stream endianness)
+        (multiple-value-bind (,formatter ,parser)
+            (make-dbus-type-formatter/parser ',name ',signature ',composite)
+          (make-instance 'dbus-type
+                         :name ',name
+                         :signature ',signature
+                         :sigexp-formatter ,formatter
+                         :signature-parser ,parser
+                         :alignment ',alignment
+                         :packer (lambda (stream endianness element-types value)
+                                   (declare (ignorable element-types value))
+                                   (with-binary-writers (stream endianness)
                                      (align ',alignment)
-                                     ,unpack))))
+                                     ,pack))
+                         :unpacker (lambda (stream endianness element-types)
+                                     (declare (ignorable element-types))
+                                     (with-binary-readers (stream endianness)
+                                       (align ',alignment)
+                                       ,unpack)))))
        ',name)))
 
 (defun pack-1 (stream endianness type value)
