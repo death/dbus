@@ -54,12 +54,12 @@
    #:authentication-error-argument
    #:method-error
    #:method-error-arguments
-   ;; Type signatures
+   ;; Type-related operators
    #:sigexp
    #:signature
-   ;; Messages
    #:pack
    #:unpack
+   ;; Messages
    #:encode-message
    #:message
    #:standard-message
