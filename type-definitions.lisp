@@ -105,3 +105,9 @@
   :alignment 8
   :pack (pack-seq stream endianness element-types value)
   :unpack (unpack-seq stream endianness element-types))
+
+(define-dbus-type :unix-fd
+  :signature #\h
+  :alignment 4
+  :pack (u32 value)
+  :unpack (u32))
