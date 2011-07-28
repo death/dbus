@@ -311,7 +311,7 @@ Local functions:
                                 (incf (stream-read-position ,',stream) ,(floor size 8))
                                 value))))
                 (,body-function-name (u 8) (u 16) (u 32) (u 64))))))))))
-  
+
 (defun signed-to-unsigned (value size)
   "Return the unsigned representation of a signed byte with a given
 size."

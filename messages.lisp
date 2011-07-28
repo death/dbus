@@ -80,12 +80,12 @@
                       (#\B :big-endian))))
     (setf (stream-read-position stream) 1)
     (destructuring-bind (type-code flags major-protocol-version
-                                   body-length serial fields)
+                         body-length serial fields)
         (unpack stream endianness "yyyuua(yv)")
       (with-binary-readers (stream endianness)
         (align 8)
         (let (body path interface member error-name
-                   reply-serial destination sender signature)
+              reply-serial destination sender signature)
           (loop for (field-code field-value) in fields
                 do (case field-code
                      (1 (setf path field-value))
@@ -120,8 +120,9 @@
 
 ;;;; Low-level way to invoke D-BUS methods
 
-(defun invoke-method (connection member &key path signature arguments interface destination
-                      no-reply no-auto-start asynchronous (endianness :little-endian))
+(defun invoke-method (connection member
+                      &key path signature arguments interface destination
+                           no-reply no-auto-start asynchronous (endianness :little-endian))
   (let ((serial (connection-next-serial connection)))
     (send-message
      (encode-message endianness :method-call

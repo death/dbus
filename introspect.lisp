@@ -76,7 +76,7 @@
 (defmacro defaulted-attribute (name default-value &body forms)
   `(let ((_ (or (optional-attribute ,name _) ,default-value)))
      ,@forms))
-  
+
 (defun parse-introspection-document (input)
   (with-xspam-source (make-xspam-source input :entity-resolver #'dont-resolve-entities)
     (element :node
