@@ -29,4 +29,5 @@
    (:file "introspect")
    (:file "convenience")
    (:file "transport-unix")
-   (:file "auth-dbus-cookie-sha1")))
+   (:file "auth-dbus-cookie-sha1")
+   (:file "auth-dbus-external")))
