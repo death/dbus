@@ -28,6 +28,7 @@
    (:file "connections")
    (:file "introspect")
    (:file "convenience")
+   (:file "standard-interfaces")
    (:file "transport-unix")
    (:file "auth-dbus-cookie-sha1")
    (:file "auth-dbus-external")))

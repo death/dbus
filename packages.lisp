@@ -107,6 +107,8 @@
    #:find-authentication-mechanism-class
    #:standard-authentication-mechanism
    #:generic-authentication-mechanism
+   ;; DBUS Cookie SHA1 authentication mechanism
+   #:dbus-cookie-sha1-authentication-mechanism
    ;; Connections
    #:with-open-connection
    #:standard-connection
@@ -136,8 +138,13 @@
    #:bus-name
    #:with-open-bus
    #:with-introspected-object
+   ;; Standard Interfaces
+   #:get-machine-id
+   #:get-property
+   #:get-all-properties
+   #:add-match
+   #:request-name
+   #:list-names
    ;; Unix Domain Sockets transport
    #:unix-server-address
-   #:unix-connection
-   ;; DBUS Cookie SHA1 authentication mechanism
-   #:dbus-cookie-sha1-authentication-mechanism))
+   #:unix-connection))
