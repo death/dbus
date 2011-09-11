@@ -1,3 +1,5 @@
+(in-package #:dbus)
+
 (defun get-property (bus object interface property)
   "Invokes the Get method to retrieve an object property."
   (dbus:invoke-method (dbus:bus-connection bus)
