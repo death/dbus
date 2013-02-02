@@ -1,29 +1,29 @@
 (in-package #:dbus)
 
-(defun get-property (bus object interface property)
+(defun get-property (bus service object interface property)
   "Invokes the Get method to retrieve an object property."
   (dbus:invoke-method (dbus:bus-connection bus)
 		      "Get"
-		      :destination interface
+		      :destination service
 		      :path object
 		      :interface "org.freedesktop.DBus.Properties"
 		      :signature "ss"
 		      :arguments (list interface property)))
 
-(defun get-all-properties (bus object destination interface)
+(defun get-all-properties (bus service object interface)
   "Invokes the GetAll method to retrieve all the properties of an object."
   (dbus:invoke-method (dbus:bus-connection bus)
 		      "GetAll"
-		      :destination destination
+		      :destination service
 		      :path object
 		      :interface "org.freedesktop.DBus.Properties"
 		      :signature "s"
 		      :arguments (list interface)))
 
-(defun get-managed-objects (bus object interface)
+(defun get-managed-objects (bus service object)
   (dbus:invoke-method (dbus:bus-connection bus)
 		      "GetManagedObjects"
-		      :destination interface
+		      :destination service
 		      :path object
 		      :interface "org.freedesktop.DBus.ObjectManager"
 		      :signature ""))

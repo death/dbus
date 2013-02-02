@@ -142,6 +142,7 @@
    #:get-machine-id
    #:get-property
    #:get-all-properties
+   #:get-managed-objects
    #:add-match
    #:request-name
    #:list-names
