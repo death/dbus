@@ -7,6 +7,9 @@
 ;;; -*- Mode: LISP; Syntax: COMMON-LISP; Package: CL-USER; Base: 10 -*-
 
 (asdf:defsystem #:dbus
+  :description "A D-BUS client library for Common Lisp"
+  :author "death <github.com/death>"
+  :license "BSD"
   :depends-on (#:alexandria #:babel #:cl-xmlspam #:flexi-streams
                #:iolib #:ironclad #:split-sequence)
   :serial t
