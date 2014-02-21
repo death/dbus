@@ -58,16 +58,24 @@
     interface))
 
 (defclass method ()
-  ((name :initarg :name :reader method-name)
-   (signature :initarg :signature :reader method-signature)))
+  ((name        :initarg :name      :reader method-name)
+   (signature   :initarg :signature :reader method-signature)
+   (arg-names   :initarg :args      :reader method-argument-names)
+   (arg-types   :initarg :arg-types :reader method-argument-types)
+   (results     :initarg :res       :reader method-result-types)))
 
 (defmethod print-object ((method method) stream)
   (print-unreadable-object (method stream :type t)
     (format stream "~S" (method-name method)))
   method)
 
-(defun make-method (name signature)
-  (make-instance 'method :name name :signature signature))
+(defun make-method (name signature parm-names parm-types results)
+  (make-instance 'method 
+                 :name name
+                 :signature signature
+                 :args      parm-names
+                 :arg-types parm-types
+                 :res results))
 
 (defun dont-resolve-entities (a b)
   (declare (ignore a b))
@@ -90,14 +98,28 @@
                 (element :method
                   (let (method-name)
                     (attribute :name (setf method-name _))
-                    (let ((signature (make-string-output-stream)))
+                    (let ((signature (make-string-output-stream))
+                          (parm-names ())
+                          (parm-types ())
+                          (result-types ()))
                       (zero-or-more
+                        ;; TODO: annotation
                        (element :arg
                          (defaulted-attribute :direction "in"
+                           (when (equal _ "out")
+                               (push _ result-types))
                            (when (equal _ "in")
+                             (attribute :name
+                               (push _ parm-names))
                              (attribute :type
+                               (push _ parm-types)
                                (write-string _ signature))))))
-                      (push (make-method method-name (get-output-stream-string signature)) methods)))))
+                      (push (make-method method-name 
+                                         (get-output-stream-string signature)
+                                         (reverse parm-names)
+                                         (reverse parm-types)
+                                         (reverse result-types))
+                            methods)))))
                (push (make-interface interface-name (nreverse methods)) interfaces)))))
         (nreverse interfaces)))))
 

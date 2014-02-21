@@ -123,6 +123,9 @@
    #:list-interface-methods
    #:method-name
    #:method-signature
+   #:method-argument-names
+   #:method-argument-types
+   #:method-result-types
    #:parse-introspection-document
    #:make-object-from-introspection
    #:object-invoke
