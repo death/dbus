@@ -16,6 +16,7 @@
   :components
   ((:file "packages")
    #+sbcl (:file "dbus-sbcl")
+   #+ecl  (:file "dbus-ecl")
    (:file "utils")
    (:file "protocols")
    (:file "conditions")
