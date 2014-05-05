@@ -138,7 +138,7 @@
    #:bus-name
    #:with-open-bus
    #:with-introspected-object
-   ;; Standard Interfaces
+   ;; Standard interfaces
    #:get-machine-id
    #:get-property
    #:get-all-properties

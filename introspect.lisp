@@ -1,5 +1,5 @@
 ;;;; +----------------------------------------------------------------+
-;;;; | DBUS                                          DEATH, 2010-2011 |
+;;;; | DBUS                                                           |
 ;;;; +----------------------------------------------------------------+
 
 (in-package #:dbus)
@@ -70,7 +70,7 @@
   method)
 
 (defun make-method (name signature parm-names parm-types results)
-  (make-instance 'method 
+  (make-instance 'method
                  :name name
                  :signature signature
                  :args      parm-names
@@ -114,7 +114,7 @@
                              (attribute :type
                                (push _ parm-types)
                                (write-string _ signature))))))
-                      (push (make-method method-name 
+                      (push (make-method method-name
                                          (get-output-stream-string signature)
                                          (reverse parm-names)
                                          (reverse parm-types)

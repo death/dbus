@@ -103,7 +103,7 @@ START and END are bounding index designators for the data."
     (vector
      (with-output-to-string (out)
        (loop for index from start below (or end (length data))
-             for octet = (aref data index) do 
+             for octet = (aref data index) do
              (write-char (char-downcase (digit-char (ash octet -4) 16)) out)
              (write-char (char-downcase (digit-char (logand octet #x0F) 16)) out))))))
 

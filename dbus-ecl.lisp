@@ -27,7 +27,6 @@
              }
              "))
 
-
 (defun unsigned-to-double (value)
   "Return the double-float value represented by the unsigned 64-bit
 byte supplied."
@@ -37,7 +36,7 @@ byte supplied."
                      uint64_t u;
                      double d;
                  } x;
-                 
+
                  x.u = #0;
                  @(return 0) = x.d;
                  }

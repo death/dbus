@@ -131,4 +131,4 @@ server addresses."
   "Return a list of server addresses for the current system."
   (parse-server-addresses-string
    (or (getenv "DBUS_SYSTEM_BUS_ADDRESS")
-       "unix:path=/var/run/dbus/system_bus_socket")))    
+       "unix:path=/var/run/dbus/system_bus_socket")))
