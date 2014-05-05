@@ -95,11 +95,9 @@ ListNames method invocation."
                  :interface "org.freedesktop.DBus"
                  :signature ""))
 
-(defun get-machine-id ()
+(defun get-machine-id (bus)
   "Gets the Machine UUID of the machine hosting the object."
-  (with-open-bus (bus (system-server-addresses))
-    (invoke-method (bus-connection bus)
-                   "GetMachineId"
-                   :destination "org.freedesktop.DBus"
-                   :interface "org.freedesktop.DBus.Peer"
-                   :path "/")))
+  (invoke-method (bus-connection bus)
+                 "GetMachineId"
+                 :interface "org.freedesktop.DBus.Peer"
+                 :path "/"))
