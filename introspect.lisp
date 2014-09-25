@@ -110,7 +110,7 @@
                              (attribute :type
                                (push _ result-types)))
                            (when (equal _ "in")
-                             (attribute :name
+                             (defaulted-attribute :name nil
                                (push _ parm-names))
                              (attribute :type
                                (push _ parm-types)
