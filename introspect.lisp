@@ -107,7 +107,8 @@
                        (element :arg
                          (defaulted-attribute :direction "in"
                            (when (equal _ "out")
-                               (push _ result-types))
+                             (attribute :type
+                               (push _ result-types)))
                            (when (equal _ "in")
                              (attribute :name
                                (push _ parm-names))
