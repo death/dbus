@@ -35,7 +35,8 @@
 
 (defclass interface ()
   ((name :initarg :name :reader interface-name)
-   (methods :initform (make-hash-table :test 'equal) :reader interface-methods)))
+   (methods :initform (make-hash-table :test 'equal) :reader interface-methods)
+   (properties :initform (make-hash-table :test 'equal) :reader interface-properties)))
 
 (defmethod print-object ((interface interface) stream)
   (print-unreadable-object (interface stream :type t)
@@ -45,16 +46,27 @@
 (defun interface-method (name interface)
   (gethash name (interface-methods interface)))
 
+(defun interface-property (name interface)
+  (gethash name (interface-properties interface)))
+
 (defun (setf interface-method) (method name interface)
   (setf (gethash name (interface-methods interface)) method))
+
+(defun (setf interface-property) (property name interface)
+  (setf (gethash name (interface-properties interface)) property))
 
 (defun list-interface-methods (interface)
   (hash-table-values (interface-methods interface)))
 
-(defun make-interface (name methods)
+(defun list-interface-properties (interface)
+  (hash-table-values (interface-properties interface)))
+
+(defun make-interface (name methods properties)
   (let ((interface (make-instance 'interface :name name)))
     (dolist (method methods)
       (setf (interface-method (method-name method) interface) method))
+    (dolist (property properties)
+      (setf (interface-property (property-name property) interface) property))
     interface))
 
 (defclass method ()
@@ -77,6 +89,22 @@
                  :arg-types parm-types
                  :res results))
 
+(defclass property ()
+  ((name        :initarg :name   :reader property-name)
+   (type        :initarg :type   :reader property-type)
+   (access      :initarg :access :reader property-access)))
+
+(defmethod print-object ((property property) stream)
+  (print-unreadable-object (property stream :type t)
+    (format stream "~S" (property-name property)))
+  property)
+
+(defun make-property (name type access)
+  (make-instance 'property
+                 :name name
+                 :type type
+                 :access access))
+
 (defun dont-resolve-entities (a b)
   (declare (ignore a b))
   (make-in-memory-input-stream nil))
@@ -93,35 +121,43 @@
          (element :interface
            (let (interface-name)
              (attribute :name (setf interface-name _))
-             (let (methods)
-               (zero-or-more
-                (element :method
-                  (let (method-name)
-                    (attribute :name (setf method-name _))
-                    (let ((signature (make-string-output-stream))
-                          (parm-names ())
-                          (parm-types ())
-                          (result-types ()))
-                      (zero-or-more
+             (let (methods properties)
+               (group
+                (zero-or-more
+                 (element :method
+                   (let (method-name)
+                     (attribute :name (setf method-name _))
+                     (let ((signature (make-string-output-stream))
+                           (parm-names ())
+                           (parm-types ())
+                           (result-types ()))
+                       (zero-or-more
                         ;; TODO: annotation
-                       (element :arg
-                         (defaulted-attribute :direction "in"
-                           (when (equal _ "out")
-                             (attribute :type
-                               (push _ result-types)))
-                           (when (equal _ "in")
-                             (defaulted-attribute :name nil
-                               (push _ parm-names))
-                             (attribute :type
-                               (push _ parm-types)
-                               (write-string _ signature))))))
-                      (push (make-method method-name
-                                         (get-output-stream-string signature)
-                                         (reverse parm-names)
-                                         (reverse parm-types)
-                                         (reverse result-types))
-                            methods)))))
-               (push (make-interface interface-name (nreverse methods)) interfaces)))))
+                        (element :arg
+                          (defaulted-attribute :direction "in"
+                            (when (equal _ "out")
+                              (attribute :type
+                                (push _ result-types)))
+                            (when (equal _ "in")
+                              (default-attribute :name nil
+                                (push _ parm-names))
+                              (attribute :type
+                                (push _ parm-types)
+                                (write-string _ signature))))))
+                       (push (make-method method-name
+                                          (get-output-stream-string signature)
+                                          (reverse parm-names)
+                                          (reverse parm-types)
+                                          (reverse result-types))
+                             methods)))))
+                (zero-or-more
+                 (element :property
+                   (let (property-name property-type property-access)
+                     (attribute :name (setf property-name _))
+                     (attribute :type (setf property-type _))
+                     (attribute :access (setf property-access _))
+                     (push (make-property property-name property-type property-access) properties)))))
+               (push (make-interface interface-name (nreverse methods) (nreverse properties)) interfaces)))))
         (nreverse interfaces)))))
 
 (defun make-object-from-introspection (connection path destination)
