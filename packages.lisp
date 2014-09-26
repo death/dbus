@@ -107,8 +107,8 @@
    #:find-authentication-mechanism-class
    #:standard-authentication-mechanism
    #:generic-authentication-mechanism
-   ;; DBUS Cookie SHA1 authentication mechanism
    #:dbus-cookie-sha1-authentication-mechanism
+   #:dbus-external-authentication-mechanism
    ;; Connections
    #:with-open-connection
    #:standard-connection
