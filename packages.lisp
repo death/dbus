@@ -12,7 +12,7 @@
   (:import-from #:xspam
                 #:with-xspam-source #:make-xspam-source #:element
                 #:one-or-more #:attribute #:_ #:zero-or-more
-                #:optional-attribute)
+                #:optional-attribute #:group)
   (:import-from #:babel #:string-to-octets #:octets-to-string)
   (:import-from #:ironclad #:digest-sequence)
   (:import-from #:iolib
@@ -122,12 +122,17 @@
    #:list-object-interfaces
    #:interface-name
    #:interface-method
+   #:interface-property
    #:list-interface-methods
+   #:list-interface-properties
    #:method-name
    #:method-signature
    #:method-argument-names
    #:method-argument-types
    #:method-result-types
+   #:property-name
+   #:property-type
+   #:property-access
    #:parse-introspection-document
    #:make-object-from-introspection
    #:object-invoke
