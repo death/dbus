@@ -222,7 +222,7 @@ Local functions:
                 (,body-function-name (u 8) (u 16) (u 32) (u 64))))))))))
 
 (defvar *stream-read-positions*
-  (make-weakly-keyed-hash-table)
+  (make-weak-hash-table :weakness :key)
   "A mapping from a stream (weakly referenced) to a read position.")
 
 (defun stream-read-position (stream)

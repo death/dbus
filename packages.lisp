@@ -24,6 +24,7 @@
   (:import-from #:flexi-streams
                 #:make-in-memory-input-stream
                 #:with-output-to-sequence)
+  (:import-from #:trivial-garbage #:make-weak-hash-table)
   (:shadow #:method #:make-method)
   (:export
    ;; Utilities

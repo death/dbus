@@ -7,11 +7,6 @@
 
 ;;;; ECL-specific code
 
-(defun make-weakly-keyed-hash-table ()
-  "Return a hash-table with key weakness."
-  ;; TODO: weak
-  (make-hash-table))
-
 (defun double-to-unsigned (value)
   "Return an unsigned 64-bit byte representing the double-float value
    passed."

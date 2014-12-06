@@ -7,10 +7,6 @@
 
 ;;;; SBCL-specific code
 
-(defun make-weakly-keyed-hash-table ()
-  "Return a hash-table with key weakness."
-  (make-hash-table :weakness :key))
-
 (defun double-to-unsigned (value)
   "Return an unsigned 64-bit byte representing the double-float value
 passed."

@@ -11,7 +11,7 @@
   :author "death <github.com/death>"
   :license "BSD"
   :depends-on (#:alexandria #:babel #:cl-xmlspam #:flexi-streams
-               #:iolib #:ironclad #:split-sequence)
+               #:iolib #:ironclad #:split-sequence #:trivial-garbage)
   :serial t
   :components
   ((:file "packages")

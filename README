@@ -8,6 +8,7 @@ Prerequisites:
   IOLib
   Ironclad
   Split-Sequence
+  Trivial-Garbage
 
 Implementations:
   SBCL
