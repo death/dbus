@@ -9,7 +9,4 @@ Prerequisites:
   Ironclad
   Split-Sequence
   Trivial-Garbage
-
-Implementations:
-  SBCL
-  ECL
+  IEEE-Floats

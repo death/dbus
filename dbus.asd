@@ -11,12 +11,11 @@
   :author "death <github.com/death>"
   :license "BSD"
   :depends-on (#:alexandria #:babel #:cl-xmlspam #:flexi-streams
-               #:iolib #:ironclad #:split-sequence #:trivial-garbage)
+               #:iolib #:ironclad #:split-sequence #:trivial-garbage
+               #:ieee-floats)
   :serial t
   :components
   ((:file "packages")
-   #+sbcl (:file "dbus-sbcl")
-   #+ecl  (:file "dbus-ecl")
    (:file "utils")
    (:file "protocols")
    (:file "conditions")

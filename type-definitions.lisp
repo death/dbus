@@ -58,8 +58,8 @@
 (define-dbus-type :double
   :signature #\d
   :alignment 8
-  :pack (u64 (double-to-unsigned (float value 0.0d0)))
-  :unpack (unsigned-to-double (u64)))
+  :pack (u64 (encode-float64 (float value 0.0d0)))
+  :unpack (decode-float64 (u64)))
 
 (define-dbus-type :string
   :signature #\s

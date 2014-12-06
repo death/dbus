@@ -25,6 +25,7 @@
                 #:make-in-memory-input-stream
                 #:with-output-to-sequence)
   (:import-from #:trivial-garbage #:make-weak-hash-table)
+  (:import-from #:ieee-floats #:encode-float64 #:decode-float64)
   (:shadow #:method #:make-method)
   (:export
    ;; Utilities
