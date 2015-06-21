@@ -36,7 +36,8 @@
 (defclass interface ()
   ((name :initarg :name :reader interface-name)
    (methods :initform (make-hash-table :test 'equal) :reader interface-methods)
-   (properties :initform (make-hash-table :test 'equal) :reader interface-properties)))
+   (properties :initform (make-hash-table :test 'equal) :reader interface-properties)
+   (signals :initform (make-hash-table :test 'equal) :reader interface-signals)))
 
 (defmethod print-object ((interface interface) stream)
   (print-unreadable-object (interface stream :type t)
@@ -49,11 +50,17 @@
 (defun interface-property (name interface)
   (gethash name (interface-properties interface)))
 
+(defun interface-signal (name interface)
+  (gethash name (interface-signals interface)))
+
 (defun (setf interface-method) (method name interface)
   (setf (gethash name (interface-methods interface)) method))
 
 (defun (setf interface-property) (property name interface)
   (setf (gethash name (interface-properties interface)) property))
+
+(defun (setf interface-signal) (signal name interface)
+  (setf (gethash name (interface-signals interface)) signal))
 
 (defun list-interface-methods (interface)
   (hash-table-values (interface-methods interface)))
@@ -61,12 +68,17 @@
 (defun list-interface-properties (interface)
   (hash-table-values (interface-properties interface)))
 
-(defun make-interface (name methods properties)
+(defun list-interface-signals (interface)
+  (hash-table-values (interface-signals interface)))
+
+(defun make-interface (name methods properties signals)
   (let ((interface (make-instance 'interface :name name)))
     (dolist (method methods)
       (setf (interface-method (method-name method) interface) method))
     (dolist (property properties)
       (setf (interface-property (property-name property) interface) property))
+    (dolist (signal signals)
+      (setf (interface-signal (signal-name signal) interface) signal))
     interface))
 
 (defclass method ()
@@ -78,7 +90,7 @@
 
 (defmethod print-object ((method method) stream)
   (print-unreadable-object (method stream :type t)
-    (format stream "~S" (method-name method)))
+    (format stream "~S ~A" (method-name method) (method-signature method)))
   method)
 
 (defun make-method (name signature parm-names parm-types results)
@@ -105,6 +117,22 @@
                  :type type
                  :access access))
 
+(defclass signal ()
+  ((name        :initarg :name      :reader signal-name)
+   (arg-names   :initarg :args      :reader signal-argument-names)
+   (arg-types   :initarg :arg-types :reader signal-argument-types)))
+
+(defmethod print-object ((signal signal) stream)
+  (print-unreadable-object (signal stream :type t)
+    (format stream "~S" (signal-name signal)))
+  signal)
+
+(defun make-signal (name parm-names parm-types)
+  (make-instance 'signal
+                 :name      name
+                 :args      parm-names
+                 :arg-types parm-types))
+
 (defun dont-resolve-entities (a b)
   (declare (ignore a b))
   (make-in-memory-input-stream nil))
@@ -121,42 +149,55 @@
          (element :interface
            (let (interface-name)
              (attribute :name (setf interface-name _))
-             (let (methods properties)
+             (let (methods properties signals)
                (zero-or-more
                 (one-of
                  (element :method
-                   (let (method-name)
+                   (let (method-name
+                         (signature (make-string-output-stream))
+                         (parm-names ())
+                         (parm-types ())
+                         (result-types ()))
                      (attribute :name (setf method-name _))
-                     (let ((signature (make-string-output-stream))
-                           (parm-names ())
-                           (parm-types ())
-                           (result-types ()))
-                       (zero-or-more
-                        ;; TODO: annotation
-                        (element :arg
-                          (defaulted-attribute :direction "in"
-                            (when (equal _ "out")
-                              (attribute :type
-                                (push _ result-types)))
-                            (when (equal _ "in")
-                              (defaulted-attribute :name nil
-                                (push _ parm-names))
-                              (attribute :type
-                                (push _ parm-types)
-                                (write-string _ signature))))))
-                       (push (make-method method-name
-                                          (get-output-stream-string signature)
-                                          (reverse parm-names)
-                                          (reverse parm-types)
-                                          (reverse result-types))
-                             methods))))
+                     (zero-or-more
+                      ;; TODO: annotation
+                      (element :arg
+                        (defaulted-attribute :direction "in"
+                          (when (equal _ "out")
+                            (attribute :type
+                              (push _ result-types)))
+                          (when (equal _ "in")
+                            (defaulted-attribute :name nil
+                              (push _ parm-names))
+                            (attribute :type
+                              (push _ parm-types)
+                              (write-string _ signature))))))
+                     (push (make-method method-name
+                                        (get-output-stream-string signature)
+                                        (reverse parm-names)
+                                        (reverse parm-types)
+                                        (reverse result-types))
+                           methods)))
                  (element :property
                    (let (property-name property-type property-access)
                      (attribute :name (setf property-name _))
                      (attribute :type (setf property-type _))
                      (attribute :access (setf property-access _))
-                     (push (make-property property-name property-type property-access) properties)))))
-               (push (make-interface interface-name (nreverse methods) (nreverse properties)) interfaces)))))
+                     (push (make-property property-name property-type property-access) properties)))
+                 (element :signal
+                   (let ((signal-name)
+                         (parm-names ())
+                         (parm-types ()))
+                     (attribute :name (setf signal-name _))
+                     (element :arg
+                       (defaulted-attribute :name nil
+                         (push _ parm-names))
+                       (attribute :type (push _ parm-types)))
+                     (push (make-signal signal-name
+                                        (nreverse parm-names)
+                                        (nreverse parm-types))
+                           signals)))))
+               (push (make-interface interface-name (nreverse methods) (nreverse properties) (nreverse signals)) interfaces)))))
         (nreverse interfaces)))))
 
 (defun make-object-from-introspection (connection path destination)
