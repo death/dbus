@@ -122,8 +122,8 @@
            (let (interface-name)
              (attribute :name (setf interface-name _))
              (let (methods properties)
-               (group
-                (zero-or-more
+               (zero-or-more
+                (one-of
                  (element :method
                    (let (method-name)
                      (attribute :name (setf method-name _))
@@ -149,8 +149,7 @@
                                           (reverse parm-names)
                                           (reverse parm-types)
                                           (reverse result-types))
-                             methods)))))
-                (zero-or-more
+                             methods))))
                  (element :property
                    (let (property-name property-type property-access)
                      (attribute :name (setf property-name _))

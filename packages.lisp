@@ -12,7 +12,7 @@
   (:import-from #:xspam
                 #:with-xspam-source #:make-xspam-source #:element
                 #:one-or-more #:attribute #:_ #:zero-or-more
-                #:optional-attribute #:group)
+                #:optional-attribute #:one-of)
   (:import-from #:babel #:string-to-octets #:octets-to-string)
   (:import-from #:ironclad #:digest-sequence)
   (:import-from #:iolib
