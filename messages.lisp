@@ -6,6 +6,9 @@
 
 
 ;;;; Encoding and decoding messages
+;;;;
+;;;; See
+;;;; http://dbus.freedesktop.org/doc/dbus-specification.html#message-protocol-marshaling
 
 (defun encode-message (endianness type flags major-protocol-version
                        serial path interface member error-name reply-serial
@@ -85,7 +88,8 @@
       (with-binary-readers (stream endianness)
         (align 8)
         (let (body path interface member error-name
-              reply-serial destination sender signature)
+              reply-serial destination sender signature
+              unix-fds)
           (loop for (field-code field-value) in fields
                 do (case field-code
                      (1 (setf path field-value))
@@ -96,6 +100,7 @@
                      (6 (setf destination field-value))
                      (7 (setf sender field-value))
                      (8 (setf signature field-value))
+                     (9 (setf unix-fds field-value))
                      (t (warn "Unknown field code ~D; ignoring field." field-code))))
           (setf body (unpack stream endianness signature))
           (macrolet ((make-message (class-name &rest additional-initargs)
