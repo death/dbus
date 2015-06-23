@@ -12,7 +12,7 @@
   (:import-from #:xspam
                 #:with-xspam-source #:make-xspam-source #:element
                 #:one-or-more #:attribute #:_ #:zero-or-more
-                #:optional-attribute #:group)
+                #:optional-attribute #:one-of)
   (:import-from #:babel #:string-to-octets #:octets-to-string)
   (:import-from #:ironclad #:digest-sequence)
   (:import-from #:iolib
@@ -26,7 +26,7 @@
                 #:with-output-to-sequence)
   (:import-from #:trivial-garbage #:make-weak-hash-table)
   (:import-from #:ieee-floats #:encode-float64 #:decode-float64)
-  (:shadow #:method #:make-method)
+  (:shadow #:method #:make-method #:signal)
   (:export
    ;; Utilities
    #:inexistent-entry
@@ -125,8 +125,10 @@
    #:interface-name
    #:interface-method
    #:interface-property
+   #:interface-signal
    #:list-interface-methods
    #:list-interface-properties
+   #:list-interface-signals
    #:method-name
    #:method-signature
    #:method-argument-names
@@ -135,6 +137,9 @@
    #:property-name
    #:property-type
    #:property-access
+   #:signal-name
+   #:signal-argument-names
+   #:signal-argument-types
    #:parse-introspection-document
    #:make-object-from-introspection
    #:object-invoke
