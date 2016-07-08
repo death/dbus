@@ -189,10 +189,11 @@
                          (parm-names ())
                          (parm-types ()))
                      (attribute :name (setf signal-name _))
-                     (element :arg
-                       (defaulted-attribute :name nil
-                         (push _ parm-names))
-                       (attribute :type (push _ parm-types)))
+                     (zero-or-more
+                      (element :arg
+                        (defaulted-attribute :name nil
+                          (push _ parm-names))
+                        (attribute :type (push _ parm-types))))
                      (push (make-signal signal-name
                                         (nreverse parm-names)
                                         (nreverse parm-types))
