@@ -10,60 +10,71 @@
 (define-dbus-type :byte
   :signature #\y
   :alignment 1
+  :lisp-type (unsigned-byte 8)
   :pack (u8 value)
   :unpack (u8))
 
 (define-dbus-type :boolean
   :signature #\b
   :alignment 4
+  :lisp-type (unsigned-byte 1)
   :pack (u32 (if value 1 0))
   :unpack (if (zerop (u32)) nil t))
 
 (define-dbus-type :int16
   :signature #\n
   :alignment 2
+  :lisp-type (signed-byte 16)
   :pack (u16 (signed-to-unsigned value 16))
   :unpack (unsigned-to-signed (u16) 16))
 
 (define-dbus-type :uint16
   :signature #\q
   :alignment 2
+  :lisp-type (unsigned-byte 16)
   :pack (u16 value)
   :unpack (u16))
 
 (define-dbus-type :int32
   :signature #\i
   :alignment 4
+  :lisp-type (signed-byte 16)
   :pack (u32 (signed-to-unsigned value 32))
   :unpack (unsigned-to-signed (u32) 32))
 
 (define-dbus-type :uint32
   :signature #\u
   :alignment 4
+  :lisp-type (unsigned-byte 32)
   :pack (u32 value)
   :unpack (u32))
 
 (define-dbus-type :int64
   :signature #\x
   :alignment 8
+  :lisp-type (or (signed-byte 64)
+                 integer)
   :pack (u64 (signed-to-unsigned value 64))
   :unpack (unsigned-to-signed (u64) 64))
 
 (define-dbus-type :uint64
   :signature #\t
   :alignment 8
+  :lisp-type (unsigned-byte 64)
   :pack (u64 value)
   :unpack (u64))
 
 (define-dbus-type :double
   :signature #\d
   :alignment 8
+  :lisp-type double
   :pack (u64 (encode-float64 (float value 0.0d0)))
   :unpack (decode-float64 (u64)))
 
 (define-dbus-type :string
   :signature #\s
   :alignment 4
+  :lisp-type string
   :pack (pack-string stream endianness value 32)
   :unpack (unpack-string stream endianness (u32)))
 
@@ -90,12 +101,14 @@
   :signature #\(
   :composite #\)
   :alignment 8
+  :lisp-type list
   :pack (pack-seq stream endianness element-types value)
   :unpack (unpack-seq stream endianness element-types))
 
 (define-dbus-type :variant
   :signature #\v
   :alignment 1
+  :lisp-type T
   :pack (pack-variant stream endianness (sigexp (first value)) (second value))
   :unpack (unpack-variant stream endianness))
 
@@ -103,6 +116,7 @@
   :signature #\{
   :composite #\}
   :alignment 8
+  :lisp-type hash-table
   :pack (pack-seq stream endianness element-types value)
   :unpack (unpack-seq stream endianness element-types))
 

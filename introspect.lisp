@@ -83,6 +83,7 @@
 
 (defclass method ()
   ((name        :initarg :name      :reader method-name)
+   (lisp-name   :initarg :lisp-name :reader method-lisp-name)
    (signature   :initarg :signature :reader method-signature)
    (arg-names   :initarg :args      :reader method-argument-names)
    (arg-types   :initarg :arg-types :reader method-argument-types)
@@ -93,9 +94,10 @@
     (format stream "~S ~A" (method-name method) (method-signature method)))
   method)
 
-(defun make-method (name signature parm-names parm-types results)
+(defun make-method (name signature parm-names parm-types results &optional lisp-name)
   (make-instance 'method
                  :name name
+                 :lisp-name lisp-name
                  :signature signature
                  :args      parm-names
                  :arg-types parm-types

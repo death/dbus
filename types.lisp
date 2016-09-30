@@ -10,6 +10,7 @@
 (defclass dbus-type ()
   ((name :initarg :name :reader dbus-type-name)
    (signature :initarg :signature :reader dbus-type-signature)
+   (lisp-type :initarg :lisp-type :reader dbus-type-lisp-type)
    (sigexp-formatter :initarg :sigexp-formatter :reader dbus-type-sigexp-formatter)
    (signature-parser :initarg :signature-parser :reader dbus-type-signature-parser)
    (alignment :initarg :alignment :reader dbus-type-alignment)
@@ -23,12 +24,14 @@
 
 (defclass dbus-type-table ()
   ((by-name :initform (make-hash-table) :reader dbus-type-table-by-name)
+   (by-lisp-type :initform (make-hash-table :test #'equal) :reader dbus-type-table-by-lisp-type)
    (by-signature :initform (make-hash-table) :reader dbus-type-table-by-signature)))
 
 (defvar *dbus-type-table*
   (make-instance 'dbus-type-table))
 
 (defun find-dbus-type (designator &optional (table *dbus-type-table*))
+  ;; TODO: can we get the lisp-type query in here, too?
   (etypecase designator
     (dbus-type (values designator '()))
     (symbol
@@ -44,9 +47,32 @@
     ((cons symbol)
      (values (find-dbus-type (first designator) table) (rest designator)))))
 
+(defun lisp-type-to-dbus (lisp-type &optional (table *dbus-type-table*))
+  ;; TODO: classes, structures
+  (cond
+    ((null lisp-type)
+     "v")
+    ((typep lisp-type 'built-in-class)
+     (lisp-type-to-dbus (class-name lisp-type)
+                        table))
+    (T
+     ;; use find-dbus-type??
+     ;; TODO: arrays, structs, ...
+     (gethash lisp-type (dbus-type-table-by-lisp-type table)))))
+
 (defun register-dbus-type (type &optional (table *dbus-type-table*))
   (setf (gethash (dbus-type-name type) (dbus-type-table-by-name table)) type)
   (setf (gethash (dbus-type-signature type) (dbus-type-table-by-signature table)) type)
+  ;; TODO: better idea?
+  (let* ((l-type (dbus-type-lisp-type type))
+         (multiple-types (and (consp l-type)
+                              (eq 'or
+                                  (first l-type))))
+         (types (if multiple-types
+                  (rest l-type)
+                  (list l-type))))
+    (loop for i in types
+          do (setf (gethash i (dbus-type-table-by-lisp-type table)) type)))
   table)
 
 (defun make-dbus-type-formatter/parser (name signature composite)
@@ -73,7 +99,7 @@
                (prog1 (cons name (parse-signature-from-stream stream composite))
                  (read-char stream)))))))
 
-(defmacro define-dbus-type (name &key signature composite alignment pack unpack)
+(defmacro define-dbus-type (name &key signature composite alignment pack unpack lisp-type)
   (with-gensyms (formatter parser)
     `(progn
        (register-dbus-type
@@ -82,6 +108,7 @@
           (make-instance 'dbus-type
                          :name ',name
                          :signature ',signature
+                         :lisp-type ',lisp-type
                          :sigexp-formatter ,formatter
                          :signature-parser ,parser
                          :alignment ',alignment

@@ -75,52 +75,57 @@
 
 (defconstant message-no-reply-expected 1)
 (defconstant message-no-auto-start 2)
+(defconstant message-error-reply 3)
 
 (defun decode-message (stream)
   "Decode a DBUS message from the stream into a MESSAGE object."
-  (let ((endianness (ecase (code-char (read-byte stream))
-                      (#\l :little-endian)
-                      (#\B :big-endian))))
-    (setf (stream-read-position stream) 1)
-    (destructuring-bind (type-code flags major-protocol-version
-                         body-length serial fields)
+  (let ((endian-byte (read-byte stream nil nil)))
+    ;; EOF?
+    (if (null endian-byte)
+      (return-from decode-message :eof))
+    (let ((endianness (ecase (code-char endian-byte)
+                        (#\l :little-endian)
+                        (#\B :big-endian))))
+      (setf (stream-read-position stream) 1)
+      (destructuring-bind (type-code flags major-protocol-version
+                                     body-length serial fields)
         (unpack stream endianness "yyyuua(yv)")
-      (with-binary-readers (stream endianness)
-        (align 8)
-        (let (body path interface member error-name
-              reply-serial destination sender signature
-              unix-fds)
-          (loop for (field-code field-value) in fields
-                do (case field-code
-                     (1 (setf path field-value))
-                     (2 (setf interface field-value))
-                     (3 (setf member field-value))
-                     (4 (setf error-name field-value))
-                     (5 (setf reply-serial field-value))
-                     (6 (setf destination field-value))
-                     (7 (setf sender field-value))
-                     (8 (setf signature field-value))
-                     (9 (setf unix-fds field-value))
-                     (t (warn "Unknown field code ~D; ignoring field." field-code))))
-          (setf body (unpack stream endianness signature))
-          (macrolet ((make-message (class-name &rest additional-initargs)
-                       `(make-instance ,class-name
-                                       :endianness endianness
-                                       :flags flags
-                                       :major-protocol-version major-protocol-version
-                                       :body-length body-length
-                                       :serial serial
-                                       :destination destination
-                                       :sender sender
-                                       :signature signature
-                                       :body body
-                                       ,@additional-initargs)))
-            (case type-code
-              (1 (make-message 'method-call-message :path path :interface interface :member member))
-              (2 (make-message 'method-return-message :reply-serial reply-serial))
-              (3 (make-message 'error-message :error-name error-name :reply-serial reply-serial))
-              (4 (make-message 'signal-message :path path :interface interface :member member))
-              (t (warn "Unknown message type code ~D; ignoring message." type-code)))))))))
+        (with-binary-readers (stream endianness)
+          (align 8)
+          (let (body path interface member error-name
+                reply-serial destination sender signature
+                unix-fds)
+            (loop for (field-code field-value) in fields
+                  do (case field-code
+                       (1 (setf path field-value))
+                       (2 (setf interface field-value))
+                       (3 (setf member field-value))
+                       (4 (setf error-name field-value))
+                       (5 (setf reply-serial field-value))
+                       (6 (setf destination field-value))
+                       (7 (setf sender field-value))
+                       (8 (setf signature field-value))
+                       (9 (setf unix-fds field-value))
+                       (t (warn "Unknown field code ~D; ignoring field." field-code))))
+            (setf body (unpack stream endianness signature))
+            (macrolet ((make-message (class-name &rest additional-initargs)
+                         `(make-instance ,class-name
+                                         :endianness endianness
+                                         :flags flags
+                                         :major-protocol-version major-protocol-version
+                                         :body-length body-length
+                                         :serial serial
+                                         :destination destination
+                                         :sender sender
+                                         :signature signature
+                                         :body body
+                                         ,@additional-initargs)))
+              (case type-code
+                (1 (make-message 'method-call-message :path path :interface interface :member member))
+                (2 (make-message 'method-return-message :reply-serial reply-serial))
+                (3 (make-message 'error-message :error-name error-name :reply-serial reply-serial))
+                (4 (make-message 'signal-message :path path :interface interface :member member))
+                (t (warn "Unknown message type code ~D; ignoring message." type-code))))))))))
 
 
 ;;;; Low-level way to invoke D-BUS methods
