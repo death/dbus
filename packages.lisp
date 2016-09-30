@@ -26,6 +26,7 @@
                 #:with-output-to-sequence)
   (:import-from #:trivial-garbage #:make-weak-hash-table)
   (:import-from #:ieee-floats #:encode-float64 #:decode-float64)
+  (:import-from #:xml-emitter #:with-xml-output #:with-tag #:with-simple-tag #:empty-tag)
   (:shadow #:method #:make-method #:signal)
   (:export
    ;; Utilities
@@ -158,6 +159,10 @@
    #:add-match
    #:request-name
    #:list-names
+   ;; Server
+   #:dbus-serve
+   #:define-dbus-method
+   #:*message*
    ;; Unix Domain Sockets transport
    #:unix-server-address
    #:unix-connection))

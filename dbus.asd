@@ -12,7 +12,7 @@
   :license "BSD"
   :depends-on (#:alexandria #:babel #:cl-xmlspam #:flexi-streams
                #:iolib #:ironclad #:split-sequence #:trivial-garbage
-               #:ieee-floats)
+               #:ieee-floats #:xml-emitter #:closer-mop)
   :serial t
   :components
   ((:file "packages")
@@ -29,5 +29,6 @@
    (:file "convenience")
    (:file "standard-interfaces")
    (:file "transport-unix")
+   (:file "server")
    (:file "auth-dbus-cookie-sha1")
    (:file "auth-dbus-external")))
