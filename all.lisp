@@ -18,7 +18,8 @@
         #:dbus/convenience
         #:dbus/transport-unix
         #:dbus/auth-dbus-cookie-sha1
-        #:dbus/auth-dbus-external)
+        #:dbus/auth-dbus-external
+        #:dbus/publish)
   (:export
    ;; Utilities
    #:inexistent-entry
@@ -153,4 +154,9 @@
    #:list-names
    ;; Unix Domain Sockets transport
    #:unix-server-address
-   #:unix-connection))
+   #:unix-connection
+   ;; Publish DBUS objects
+   #:define-dbus-object
+   #:define-dbus-method
+   #:define-dbus-signal-handler
+   #:publish-objects))
