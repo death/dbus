@@ -20,6 +20,9 @@
   (format t "Got signal with arg ~S~%" s))
 
 (defun publish-example ()
-  (with-open-bus (bus (session-server-addresses))
-    (format t "Bus connection name: ~A~%" (bus-name bus))
-    (publish-objects (bus-connection bus))))
+  (handler-case
+      (with-open-bus (bus (session-server-addresses))
+        (format t "Bus connection name: ~A~%" (bus-name bus))
+        (publish-objects (bus-connection bus)))
+    (end-of-file ()
+      :disconnected-by-bus)))
