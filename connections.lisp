@@ -114,12 +114,12 @@
               (:error (if arg (send :error arg) (send :error)) (go waiting-for-data))))
            (:rejected (go initial))
            (:error (send :cancel) (go waiting-for-reject))
-           (:ok (go negotiate-unix-fd-passing))
+           (:ok (go got-ok))
            (t (send :error) (go waiting-for-data)))
        waiting-for-ok
          (multiple-value-setq (op arg) (receive))
          (case op
-           (:ok (go negotiate-unix-fd-passing))
+           (:ok (go got-ok))
            (:reject (go initial))
            ((:data :error) (send :cancel) (go waiting-for-reject))
            (t (send :error) (go waiting-for-ok)))
@@ -128,7 +128,8 @@
          (case op
            (:reject (go initial))
            (t (error 'authentication-error :command op :argument arg)))
-       negotiate-unix-fd-passing
+       got-ok
+         (setf (connection-server-uuid connection) arg)
          (send :negotiate-unix-fd)
          (go wait-for-unix-fd-passing-agreement)
        wait-for-unix-fd-passing-agreement
@@ -141,8 +142,7 @@
            (t (error 'authentication-error :command op :argument arg)))
          (send :begin)
          (go authenticated)
-       authenticated
-         (setf (connection-server-uuid connection) arg))))
+       authenticated)))
   t)
 
 
