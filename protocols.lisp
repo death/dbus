@@ -100,6 +100,10 @@ supported by the server."))
 with the connection, and return true if successful.  The default value
 for IF-FAILED is :ERROR."))
 
+(defgeneric supports-unix-fd-passing-p (connection)
+  (:documentation "Returns true if Unix file descriptors can be passed
+over the connection, and false otherwise."))
+
 
 ;;;; Authentication mechanism protocol
 

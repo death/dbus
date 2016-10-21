@@ -19,7 +19,8 @@
    (uuid :initarg :uuid :accessor connection-server-uuid)
    (pending-messages :initform '() :accessor connection-pending-messages)
    (event-base :initarg :event-base :reader connection-event-base)
-   (serial :initform 1))
+   (serial :initform 1)
+   (supports-unix-fd-passing :initform nil :accessor supports-unix-fd-passing-p))
   (:default-initargs :uuid nil)
   (:documentation "Represents a standard DBUS connection."))
 
@@ -113,12 +114,12 @@
               (:error (if arg (send :error arg) (send :error)) (go waiting-for-data))))
            (:rejected (go initial))
            (:error (send :cancel) (go waiting-for-reject))
-           (:ok (send :begin) (go authenticated))
+           (:ok (go negotiate-unix-fd-passing))
            (t (send :error) (go waiting-for-data)))
        waiting-for-ok
          (multiple-value-setq (op arg) (receive))
          (case op
-           (:ok (send :begin) (go authenticated))
+           (:ok (go negotiate-unix-fd-passing))
            (:reject (go initial))
            ((:data :error) (send :cancel) (go waiting-for-reject))
            (t (send :error) (go waiting-for-ok)))
@@ -127,6 +128,19 @@
          (case op
            (:reject (go initial))
            (t (error 'authentication-error :command op :argument arg)))
+       negotiate-unix-fd-passing
+         (send :negotiate-unix-fd)
+         (go wait-for-unix-fd-passing-agreement)
+       wait-for-unix-fd-passing-agreement
+         (multiple-value-setq (op arg) (receive))
+         (case op
+           (:error
+            (setf (supports-unix-fd-passing-p connection) nil))
+           (:agree-unix-fd
+            (setf (supports-unix-fd-passing-p connection) t))
+           (t (error 'authentication-error :command op :argument arg)))
+         (send :begin)
+         (go authenticated)
        authenticated
          (setf (connection-server-uuid connection) arg))))
   t)

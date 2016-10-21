@@ -45,6 +45,11 @@ supported by the D-BUS system."))
     Data are available; the second value is either an octet vector or
     a string, depending on the value of AS-STRING.
 
+  :AGREE-UNIX-FD
+
+    The server supports Unix file descriptor passing; the second value
+    is NIL.
+
   :ERROR
 
     Bad command or arguments; the second value is NIL.
@@ -59,14 +64,16 @@ supported by the D-BUS system."))
         ((starts-with-subseq "DATA " line)
          (let ((data (decode-hex-string line :start 5)))
            (values :data (if as-string (octets-to-string data :encoding :utf-8) data))))
+        ((equal "AGREE_UNIX_FD" line)
+         (values :agree-unix-fd nil))
         ((starts-with-subseq "ERROR " line)
          (values :error nil))
         (t (values :unexpected line))))
 
 (defun format-authentication-command (command &rest arguments)
   "Format and return authentication command line.  Command is one
-of :AUTH, :CANCEL, :BEGIN, :DATA, or :ERROR, and takes arguments in
-accordance with the D-BUS specification."
+of :AUTH, :CANCEL, :BEGIN, :DATA, :NEGOTIATE-UNIX-FD, or :ERROR, and
+takes arguments in accordance with the D-BUS specification."
   (ecase command
     (:auth
      (destructuring-bind (&optional mechanism initial-response) arguments
@@ -76,6 +83,7 @@ accordance with the D-BUS specification."
     (:data
      (destructuring-bind (data) arguments
        (format nil "DATA ~A" (encode-hex-string data))))
+    (:negotiate-unix-fd "NEGOTIATE_UNIX_FD ")
     (:error
      (destructuring-bind (&optional explanation) arguments
        (format nil "ERROR ~@[~A~]" explanation)))))

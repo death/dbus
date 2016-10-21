@@ -55,6 +55,7 @@
    #:send-line
    #:supported-authentication-mechanisms
    #:authenticate
+   #:supports-unix-fd-passing-p
    ;; Authentication mechanism protocol
    #:authentication-mechanism
    #:authentication-mechanism-name
