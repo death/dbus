@@ -69,8 +69,8 @@
         do (setf object (inexistent-entry name :error))
            ;; We can also accept a new object name.
            (when (symbolp object)
-             (setf object (find-dbus-object object)))
-        finally (return (values object (dbus-object-name object)))))
+             (shiftf name object (find-dbus-object object)))
+        finally (return (values object name))))
 
 (defmacro define-dbus-object (name &body options)
   (let ((path nil))
