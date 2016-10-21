@@ -73,6 +73,7 @@
    #:signature
    #:pack
    #:unpack
+   #:valid-body-p
    ;; Messages
    #:encode-message
    #:message

@@ -14,7 +14,8 @@
    (signature-parser :initarg :signature-parser :reader dbus-type-signature-parser)
    (alignment :initarg :alignment :reader dbus-type-alignment)
    (packer :initarg :packer :reader dbus-type-packer)
-   (unpacker :initarg :unpacker :reader dbus-type-unpacker)))
+   (unpacker :initarg :unpacker :reader dbus-type-unpacker)
+   (checker :initarg :checker :reader dbus-type-checker)))
 
 (defmethod print-object ((type dbus-type) stream)
   (print-unreadable-object (type stream :type t)
@@ -73,7 +74,7 @@
                (prog1 (cons name (parse-signature-from-stream stream composite))
                  (read-char stream)))))))
 
-(defmacro define-dbus-type (name &key signature composite alignment pack unpack)
+(defmacro define-dbus-type (name &key signature composite alignment pack unpack (checker t))
   (with-gensyms (formatter parser)
     `(progn
        (register-dbus-type
@@ -94,7 +95,12 @@
                                      (declare (ignorable element-types))
                                      (with-binary-readers (stream endianness)
                                        (align ',alignment)
-                                       ,unpack)))))
+                                       ,unpack))
+                         :checker ,(if (and (consp checker) (eq (car checker) 'function))
+                                       checker
+                                       `(lambda (value element-types)
+                                          (declare (ignore element-types))
+                                          (typep value ',checker))))))
        ',name)))
 
 (defun pack-1 (stream endianness type value)
@@ -197,6 +203,56 @@ character stream."
     (multiple-value-bind (type element-types) (find-dbus-type subexp)
       (funcall (dbus-type-sigexp-formatter type) stream element-types))))
 
+(defun valid-signature-p (value element-types)
+  "Return true if the value is a valid signature string or signature
+expression, and false otherwise."
+  (declare (ignore element-types))
+  (handler-case
+      (progn (signature (sigexp value)) t)
+    (error () nil)))
+
+(defun valid-array-p (value element-types)
+  "Return true if the value is a sequence with elements of the first
+type supplied in ELEMENT-TYPES, and false otherwise."
+  (when element-types
+    (let ((element-type (first element-types)))
+      (and (typep value 'sequence)
+           (every (lambda (element) (valid-value-p element element-type))
+                  value)))))
+
+(defun valid-struct-p (value element-types)
+  "Return true if the value is a sequence with elements matching the
+types supplied in ELEMENT-TYPES, and false otherwise."
+  (and (typep value 'sequence)
+       (= (length value) (length element-types))
+       (every (lambda (element element-type) (valid-value-p element element-type))
+              value element-types)))
+
+(defun valid-variant-p (value element-types)
+  "Return true if the value is a variant value specification, and
+false otherwise."
+  (declare (ignore element-types))
+  (and (listp value)
+       (= (length value) 2)
+       (valid-value-p (first value) :signature)
+       (let ((actual-value (second value))
+             (sigexp (sigexp (first value))))
+         (valid-value-p actual-value (first sigexp)))))
+
+(defun valid-dict-entry-p (value element-types)
+  "Return true if the value is a sequence with two elements, both
+matching the types supplied in ELEMENT-TYPES, and false otherwise."
+  (and (typep value 'sequence)
+       (= (length value) (length element-types) 2)
+       (every (lambda (element element-type) (valid-value-p element element-type))
+              value element-types)))
+
+(defun valid-value-p (value type)
+  "Return true if the value is of the supplied DBUS type, and false
+otherwise."
+  (multiple-value-bind (type element-types) (find-dbus-type type)
+    (funcall (dbus-type-checker type) value element-types)))
+
 
 ;;;; Operators related to DBUS types
 
@@ -229,3 +285,10 @@ into stream."
   "Unpack values from stream according to endianness and the signature
 expression and return them as a list."
   (unpack-seq stream endianness (sigexp sigexp)))
+
+(defun valid-body-p (body sigexp)
+  "Return true if the message body (which is a list of values) is
+valid according to the signature expression, and false otherwise."
+  (setf sigexp (sigexp sigexp))
+  (and (= (length body) (length sigexp))
+       (every #'valid-value-p body sigexp)))
