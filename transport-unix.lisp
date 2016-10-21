@@ -1,8 +1,15 @@
 ;;;; +----------------------------------------------------------------+
-;;;; | DBUS                                          DEATH, 2010-2011 |
+;;;; | DBUS                                                           |
 ;;;; +----------------------------------------------------------------+
 
-(in-package #:dbus)
+(defpackage #:dbus/transport-unix
+  (:use #:cl #:dbus/server-addresses #:dbus/protocols #:dbus/connections)
+  (:import-from #:iolib #:ensure-address)
+  (:export
+   #:unix-server-address
+   #:unix-connection))
+
+(in-package #:dbus/transport-unix)
 
 
 ;;;; Unix Domain Sockets transport

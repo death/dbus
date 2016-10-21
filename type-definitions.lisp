@@ -1,8 +1,13 @@
 ;;;; +----------------------------------------------------------------+
-;;;; | DBUS                                          DEATH, 2010-2011 |
+;;;; | DBUS                                                           |
 ;;;; +----------------------------------------------------------------+
 
-(in-package #:dbus)
+(defpackage #:dbus/type-definitions
+  (:use #:cl #:dbus/utils #:dbus/types)
+  (:import-from #:ieee-floats #:encode-float64 #:decode-float64)
+  (:export))
+
+(in-package #:dbus/type-definitions)
 
 
 ;;;; DBUS type definitions

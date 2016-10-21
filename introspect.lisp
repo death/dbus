@@ -2,7 +2,44 @@
 ;;;; | DBUS                                                           |
 ;;;; +----------------------------------------------------------------+
 
-(in-package #:dbus)
+(defpackage #:dbus/introspect
+  (:use #:cl #:dbus/messages)
+  (:import-from #:alexandria #:hash-table-values)
+  (:import-from #:xspam
+                #:with-xspam-source #:make-xspam-source #:element
+                #:one-or-more #:attribute #:_ #:zero-or-more
+                #:optional-attribute #:one-of)
+  (:import-from #:flexi-streams #:make-in-memory-input-stream)
+  (:shadow #:method #:make-method #:signal)
+  (:export
+   #:object-connection
+   #:object-path
+   #:object-destination
+   #:object-interface
+   #:list-object-interfaces
+   #:interface-name
+   #:interface-method
+   #:interface-property
+   #:interface-signal
+   #:list-interface-methods
+   #:list-interface-properties
+   #:list-interface-signals
+   #:method-name
+   #:method-signature
+   #:method-argument-names
+   #:method-argument-types
+   #:method-result-types
+   #:property-name
+   #:property-type
+   #:property-access
+   #:signal-name
+   #:signal-argument-names
+   #:signal-argument-types
+   #:parse-introspection-document
+   #:make-object-from-introspection
+   #:object-invoke))
+
+(in-package #:dbus/introspect)
 
 
 ;;;; Support for introspection of D-BUS objects

@@ -2,7 +2,17 @@
 ;;;; | DBUS                                                           |
 ;;;; +----------------------------------------------------------------+
 
-(in-package #:dbus)
+(defpackage #:dbus/conditions
+  (:use #:cl)
+  (:export
+   #:dbus-error
+   #:authentication-error
+   #:authentication-error-command
+   #:authentication-error-argument
+   #:method-error
+   #:method-error-arguments))
+
+(in-package #:dbus/conditions)
 
 
 ;;;; Condition types

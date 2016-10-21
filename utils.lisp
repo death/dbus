@@ -1,8 +1,38 @@
 ;;;; +----------------------------------------------------------------+
-;;;; | DBUS                                          DEATH, 2010-2011 |
+;;;; | DBUS                                                           |
 ;;;; +----------------------------------------------------------------+
 
-(in-package #:dbus)
+(defpackage #:dbus/utils
+  (:use #:cl)
+  (:import-from #:alexandria #:once-only #:with-gensyms #:when-let)
+  (:import-from #:trivial-garbage #:make-weak-hash-table)
+  (:import-from #:babel #:string-to-octets)
+  (:import-from #:iolib.syscalls #:getpwuid #:getuid)
+  (:export
+   #:make-octet-vector
+   #:inexistent-entry
+   #:inexistent-entry-designator
+   #:entry-replacement-attempt
+   #:entry-replacement-attempt-old
+   #:entry-replacement-attempt-new
+   #:replace-entry-p
+   #:encode-hex-string
+   #:decode-hex-string
+   #:with-if-failed-handler
+   #:current-username
+   #:with-binary-writers
+   #:with-binary-readers
+   #:stream-read-position
+   #:signed-to-unsigned
+   #:unsigned-to-signed
+   #:define-name-class-mapping
+   #:align
+   #:u8
+   #:u16
+   #:u32
+   #:u64))
+
+(in-package #:dbus/utils)
 
 
 ;;;; Utilities

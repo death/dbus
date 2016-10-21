@@ -1,8 +1,38 @@
 ;;;; +----------------------------------------------------------------+
-;;;; | DBUS                                          DEATH, 2010-2011 |
+;;;; | DBUS                                                           |
 ;;;; +----------------------------------------------------------------+
 
-(in-package #:dbus)
+(defpackage #:dbus/messages
+  (:use #:cl #:dbus/utils #:dbus/types #:dbus/protocols #:dbus/conditions)
+  (:import-from #:flexi-streams #:with-output-to-sequence)
+  (:export
+   #:message
+   #:standard-message
+   #:message-endianness
+   #:message-flags
+   #:message-major-protocol-version
+   #:message-body-length
+   #:message-serial
+   #:message-destination
+   #:message-sender
+   #:message-signature
+   #:message-body
+   #:method-call-message
+   #:message-path
+   #:message-interface
+   #:message-member
+   #:signal-message
+   #:method-return-message
+   #:message-reply-serial
+   #:error-message
+   #:message-error-name
+   #:message-no-reply-expected
+   #:message-no-auto-start
+   #:decode-message
+   #:encode-message
+   #:invoke-method))
+
+(in-package #:dbus/messages)
 
 
 ;;;; Encoding and decoding messages

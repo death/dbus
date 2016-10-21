@@ -1,8 +1,36 @@
 ;;;; +----------------------------------------------------------------+
-;;;; | DBUS                                          DEATH, 2010-2011 |
+;;;; | DBUS                                                           |
 ;;;; +----------------------------------------------------------------+
 
-(in-package #:dbus)
+(defpackage #:dbus/protocols
+  (:use #:cl)
+  (:export
+   #:server-address
+   #:server-address-transport-name
+   #:server-address-property
+   #:open-connection
+   #:connection
+   #:connection-server-address
+   #:connection-server-uuid
+   #:connection-fd
+   #:connection-pending-messages
+   #:connection-next-serial
+   #:drain-pending-messages
+   #:close-connection
+   #:wait-for-reply
+   #:receive-message
+   #:receive-line
+   #:send-message
+   #:send-line
+   #:supported-authentication-mechanisms
+   #:authenticate
+   #:supports-unix-fd-passing-p
+   #:authentication-mechanism
+   #:authentication-mechanism-name
+   #:authentication-mechanism-textual-p
+   #:feed-authentication-mechanism))
+
+(in-package #:dbus/protocols)
 
 
 ;;;; Server address protocol

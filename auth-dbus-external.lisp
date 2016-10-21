@@ -2,7 +2,12 @@
 ;;;; | DBUS                                                           |
 ;;;; +----------------------------------------------------------------+
 
-(in-package #:dbus)
+(defpackage #:dbus/auth-dbus-external
+  (:use #:cl #:dbus/utils #:dbus/protocols #:dbus/authentication-mechanisms)
+  (:export
+   #:dbus-external-authentication-mechanism))
+
+(in-package #:dbus/auth-dbus-external)
 
 
 ;;;; DBUS external authentication mechanism

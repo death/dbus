@@ -1,8 +1,37 @@
 ;;;; +----------------------------------------------------------------+
-;;;; | DBUS                                          DEATH, 2010-2011 |
+;;;; | DBUS                                                           |
 ;;;; +----------------------------------------------------------------+
 
-(in-package #:dbus)
+(defpackage #:dbus/types
+  (:use #:cl #:dbus/utils)
+  (:import-from #:alexandria #:with-gensyms #:circular-list)
+  (:import-from #:babel #:string-to-octets #:octets-to-string)
+  (:export
+   #:sigexp
+   #:signature
+   #:pack
+   #:unpack
+   #:valid-body-p
+   #:define-dbus-type
+   #:pack-string
+   #:unpack-string
+   #:pack-array
+   #:unpack-array
+   #:pack-seq
+   #:unpack-seq
+   #:pack-variant
+   #:unpack-variant
+   #:valid-signature-p
+   #:valid-array-p
+   #:valid-struct-p
+   #:valid-variant-p
+   #:valid-dict-entry-p
+   #:stream
+   #:endianness
+   #:value
+   #:element-types))
+
+(in-package #:dbus/types)
 
 
 ;;;; Defining DBUS types

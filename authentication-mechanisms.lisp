@@ -2,7 +2,19 @@
 ;;;; | DBUS                                                           |
 ;;;; +----------------------------------------------------------------+
 
-(in-package #:dbus)
+(defpackage #:dbus/authentication-mechanisms
+  (:use #:cl #:dbus/utils #:dbus/protocols #:dbus/conditions)
+  (:import-from #:split-sequence #:split-sequence)
+  (:import-from #:alexandria #:starts-with-subseq)
+  (:import-from #:babel #:octets-to-string)
+  (:export
+   #:find-authentication-mechanism-class
+   #:standard-authentication-mechanism
+   #:generic-authentication-mechanism
+   #:receive-authentication-response
+   #:send-authentication-command))
+
+(in-package #:dbus/authentication-mechanisms)
 
 
 ;;;; Authentication mechanisms

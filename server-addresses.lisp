@@ -1,8 +1,21 @@
 ;;;; +----------------------------------------------------------------+
-;;;; | DBUS                                          DEATH, 2010-2011 |
+;;;; | DBUS                                                           |
 ;;;; +----------------------------------------------------------------+
 
-(in-package #:dbus)
+(defpackage #:dbus/server-addresses
+  (:use #:cl #:dbus/utils #:dbus/protocols)
+  (:import-from #:alexandria #:plist-hash-table #:when-let)
+  (:import-from #:babel #:octets-to-string)
+  (:import-from #:iolib.syscalls #:getenv)
+  (:export
+   #:find-server-address-class
+   #:standard-server-address
+   #:generic-server-address
+   #:parse-server-addresses-string
+   #:session-server-addresses
+   #:system-server-addresses))
+
+(in-package #:dbus/server-addresses)
 
 
 ;;;; Server addresses

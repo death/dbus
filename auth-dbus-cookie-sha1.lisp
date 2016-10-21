@@ -2,7 +2,15 @@
 ;;;; | DBUS                                                           |
 ;;;; +----------------------------------------------------------------+
 
-(in-package #:dbus)
+(defpackage #:dbus/auth-dbus-cookie-sha1
+  (:use #:cl #:dbus/utils #:dbus/protocols #:dbus/authentication-mechanisms)
+  (:import-from #:split-sequence #:split-sequence)
+  (:import-from #:babel #:string-to-octets)
+  (:import-from #:ironclad #:digest-sequence)
+  (:export
+   #:dbus-cookie-sha1-authentication-mechanism))
+
+(in-package #:dbus/auth-dbus-cookie-sha1)
 
 
 ;;;; DBUS Cookie SHA1 authentication mechanism

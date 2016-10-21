@@ -2,7 +2,21 @@
 ;;;; | DBUS                                                           |
 ;;;; +----------------------------------------------------------------+
 
-(in-package #:dbus)
+(defpackage #:dbus/connections
+  (:use #:cl
+        #:dbus/utils #:dbus/protocols #:dbus/authentication-mechanisms
+        #:dbus/messages #:dbus/conditions)
+  (:import-from #:alexandria #:ensure-list)
+  (:import-from #:iolib #:event-dispatch #:set-io-handler #:make-socket
+                #:connect #:fd-of)
+  (:export
+   #:with-open-connection
+   #:standard-connection
+   #:socket-connection-mixin
+   #:open-socket-connection
+   #:connection-event-base))
+
+(in-package #:dbus/connections)
 
 
 ;;;; Connections
