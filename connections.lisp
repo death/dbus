@@ -101,7 +101,7 @@
            (go initial))
          (send :auth (authentication-mechanism-name mechanism) arg)
          (ecase op
-           (:ok (go got-ok))
+           (:ok (go waiting-for-ok))
            (:continue (go waiting-for-data)))
        waiting-for-data
          (multiple-value-setq (op arg) (receive))
