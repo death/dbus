@@ -70,7 +70,7 @@
            ;; We can also accept a new object name.
            (when (symbolp object)
              (shiftf name object (find-dbus-object object)))
-        finally (return (values object name))))
+        finally (return (values object (dbus-object-name object)))))
 
 (defmacro define-dbus-object (name &body options)
   (let ((path nil))
