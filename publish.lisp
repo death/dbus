@@ -20,7 +20,7 @@
 
 ;;; Define objects
 
-(defparameter *all-dbus-objects* '())
+(defvar *all-dbus-objects* '())
 
 (defclass dbus-object ()
   ((name :initarg :name :reader dbus-object-name)
