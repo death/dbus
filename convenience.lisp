@@ -4,7 +4,11 @@
 
 (defpackage #:dbus/convenience
   (:use #:cl
-        #:dbus/protocols #:dbus/messages #:dbus/connections #:dbus/introspect)
+        #:dbus/protocols
+        #:dbus/messages
+        #:dbus/connections
+        #:dbus/introspect
+        #:dbus/publish)
   (:import-from #:alexandria #:with-gensyms #:once-only)
   (:import-from #:iolib #:with-event-base)
   (:export
@@ -51,6 +55,9 @@
        (flet ((,name (interface-name method-name &rest args)
                 (apply #'object-invoke ,object interface-name method-name args)))
          ,@forms))))
+
+(defmethod publish-objects ((bus bus) &optional (object-names *all-dbus-objects*))
+  (publish-objects (bus-connection bus) object-names))
 
 
 ;;;; Standard interfaces

@@ -4,10 +4,14 @@
 
 (defpackage #:dbus/publish
   (:use #:cl
-        #:dbus/utils #:dbus/protocols #:dbus/messages #:dbus/connections
+        #:dbus/utils
+        #:dbus/protocols
+        #:dbus/messages
+        #:dbus/connections
         #:dbus/types)
   (:import-from #:iolib #:event-dispatch)
   (:export
+   #:*all-dbus-objects*
    #:define-dbus-object
    #:define-dbus-method
    #:define-dbus-signal-handler

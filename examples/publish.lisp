@@ -23,6 +23,6 @@
   (handler-case
       (with-open-bus (bus (session-server-addresses))
         (format t "Bus connection name: ~A~%" (bus-name bus))
-        (publish-objects (bus-connection bus)))
+        (publish-objects bus))
     (end-of-file ()
       :disconnected-by-bus)))
