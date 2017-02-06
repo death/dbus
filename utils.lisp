@@ -70,8 +70,8 @@ acts according to the value of IF-DOES-NOT-EXIST:
 (defun prompt-for-value ()
   "Interactively prompt for a value.  An expression is read and
 evaluated, and its value is returned."
-  (format t "Enter an expression to yield a value: ")
-  (multiple-value-list (eval (read))))
+  (format *query-io* "Enter an expression to yield a value: ")
+  (multiple-value-list (eval (read *query-io*))))
 
 (define-condition entry-replacement-attempt (error)
   ((old :initarg :old :reader entry-replacement-attempt-old)
