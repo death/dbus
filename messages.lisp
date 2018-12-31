@@ -107,10 +107,18 @@
 (defconstant message-no-auto-start 2)
 
 (defun decode-message (stream)
-  "Decode a DBUS message from the stream into a MESSAGE object."
-  (let ((endianness (ecase (code-char (read-byte stream))
+  "Decode a DBUS message from the stream.
+
+If there are no bytes to be read from the stream, the function
+immediately returns NIL.  Otherwise, the function performs blocking
+reads until a complete message is decoded.
+
+Unfortunately, due to Common Lisp not having a READ-BYTE-NO-HANG
+operator, the stream has to be a bivalent stream."
+  (let ((endianness (ecase (read-char-no-hang stream nil nil)
                       (#\l :little-endian)
-                      (#\B :big-endian))))
+                      (#\B :big-endian)
+                      ((nil) (return-from decode-message nil)))))
     (setf (stream-read-position stream) 1)
     (destructuring-bind (type-code flags major-protocol-version
                          body-length serial fields)

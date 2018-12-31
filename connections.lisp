@@ -6,7 +6,7 @@
   (:use #:cl
         #:dbus/utils #:dbus/protocols #:dbus/authentication-mechanisms
         #:dbus/messages #:dbus/conditions)
-  (:import-from #:alexandria #:ensure-list)
+  (:import-from #:alexandria #:ensure-list #:deletef)
   (:import-from #:iolib #:event-dispatch #:set-io-handler #:make-socket
                 #:connect #:fd-of)
   (:export
@@ -56,20 +56,14 @@
     (setf (connection-pending-messages connection) '())))
 
 (defmethod wait-for-reply (serial (connection standard-connection))
-  (let ((reply nil))
-    (flet ((reply-p (message)
-             (when (and (typep message '(or error-message method-return-message))
-                        (= serial (message-reply-serial message)))
-               (setf reply message))))
-      (with-accessors ((pending-messages connection-pending-messages)) connection
-        (setf pending-messages (delete-if (lambda (message) (reply-p message)) pending-messages))
-        (unless reply
-          (loop
-           (event-dispatch (connection-event-base connection) :one-shot t)
-           (when (reply-p (first pending-messages))
-             (pop pending-messages)
-             (return))))))
-    (values (message-body reply) reply)))
+  (loop
+   (dolist (message (connection-pending-messages connection))
+     (when (and (typep message '(or error-message method-return-message))
+                (= serial (message-reply-serial message)))
+       (deletef (connection-pending-messages connection) message :count 1)
+       (return-from wait-for-reply
+         (values (message-body message) message))))
+   (event-dispatch (connection-event-base connection) :one-shot t)))
 
 (defun activate-io-handlers (connection)
   (set-io-handler
@@ -78,9 +72,11 @@
    :read
    (lambda (fd event error)
      (declare (ignore fd event))
-     (if error
-         (error "Connection I/O error: ~S." error)
-         (push (receive-message connection) (connection-pending-messages connection))))))
+     (when error
+       (error "Connection I/O error: ~S." error))
+     (loop for message = (receive-message-no-hang connection)
+           while message
+           do (push message (connection-pending-messages connection))))))
 
 (defmethod supported-authentication-mechanisms ((connection standard-connection))
   (send-authentication-command connection :auth)
@@ -184,7 +180,7 @@
 (defmethod close-connection ((connection socket-connection-mixin))
   (close (connection-socket connection)))
 
-(defmethod receive-message ((connection socket-connection-mixin))
+(defmethod receive-message-no-hang ((connection socket-connection-mixin))
   (decode-message (connection-socket connection)))
 
 (defmethod receive-line ((connection socket-connection-mixin))

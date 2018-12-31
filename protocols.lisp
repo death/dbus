@@ -18,7 +18,7 @@
    #:drain-pending-messages
    #:close-connection
    #:wait-for-reply
-   #:receive-message
+   #:receive-message-no-hang
    #:receive-line
    #:send-message
    #:send-line
@@ -102,8 +102,9 @@ these messages no longer pending."))
   (:documentation "Wait for a reply message with the supplied serial
 to be received via connection."))
 
-(defgeneric receive-message (connection)
-  (:documentation "Read a D-BUS message from the server."))
+(defgeneric receive-message-no-hang (connection)
+  (:documentation "Read a D-BUS message from the server.  If no
+message is available to read, return NIL."))
 
 (defgeneric receive-line (connection)
   (:documentation "Read a line of text from the server and return it as

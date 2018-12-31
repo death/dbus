@@ -42,7 +42,7 @@
    #:drain-pending-messages
    #:close-connection
    #:wait-for-reply
-   #:receive-message
+   #:receive-message-no-hang
    #:receive-line
    #:send-message
    #:send-line
