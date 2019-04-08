@@ -111,11 +111,12 @@
 
 If there are no bytes to be read from the stream, the function
 immediately returns NIL.  Otherwise, the function performs blocking
-reads until a complete message is decoded.
+reads until a complete message is decoded.  If an end of file occurs,
+an error of type END-OF-FILE is signaled.
 
 Unfortunately, due to Common Lisp not having a READ-BYTE-NO-HANG
 operator, the stream has to be a bivalent stream."
-  (let ((endianness (ecase (read-char-no-hang stream nil nil)
+  (let ((endianness (ecase (read-char-no-hang stream)
                       (#\l :little-endian)
                       (#\B :big-endian)
                       ((nil) (return-from decode-message nil)))))
