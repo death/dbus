@@ -5,7 +5,7 @@
 (defpackage #:dbus/introspect
   (:use #:cl #:dbus/messages)
   (:import-from #:alexandria #:hash-table-values)
-  (:import-from #:xspam
+  (:import-from #:dbus/xspam
                 #:with-xspam-source #:make-xspam-source #:element
                 #:one-or-more #:attribute #:_ #:zero-or-more
                 #:optional-attribute #:one-of)
