@@ -4,6 +4,7 @@
 
 (defpackage #:dbus/auth-dbus-external
   (:use #:cl #:dbus/utils #:dbus/protocols #:dbus/authentication-mechanisms)
+  (:import-from #:iolib.syscalls #:getuid)
   (:export
    #:dbus-external-authentication-mechanism))
 
@@ -22,5 +23,5 @@
 
 (defmethod feed-authentication-mechanism ((mechanism dbus-external-authentication-mechanism) challenge)
   (if (eq challenge :initial-response)
-      (values :continue (encode-hex-string (current-username)))
+      (values :continue (encode-hex-string (write-to-string (getuid))))
       (error "More than one response requested for EXTERNAL authentication.")))
