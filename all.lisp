@@ -159,4 +159,5 @@
    #:define-dbus-object
    #:define-dbus-method
    #:define-dbus-signal-handler
+   #:define-dbus-property
    #:publish-objects))

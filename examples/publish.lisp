@@ -15,6 +15,10 @@
   (:interface "org.adeht.MyService")
   (concatenate 'string s1 s2))
 
+(define-dbus-property (my-service my-property)
+  (:interface "org.adeht.MyService")
+  "initial-property-value")
+
 (define-dbus-signal-handler (my-service on-signal) ((s :string))
   (:interface "org.adeht.MyService")
   (format t "Got signal with arg ~S~%" s))

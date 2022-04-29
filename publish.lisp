@@ -15,6 +15,7 @@
    #:define-dbus-object
    #:define-dbus-method
    #:define-dbus-signal-handler
+   #:define-dbus-property
    #:publish-objects))
 
 (in-package #:dbus/publish)
@@ -30,7 +31,8 @@
   ((name :initarg :name :reader dbus-object-name)
    (path :initarg :path :accessor dbus-object-path)
    (method-handlers :initform (make-hash-table :test 'equal) :reader dbus-object-method-handlers)
-   (signal-handlers :initform (make-hash-table :test 'equal) :reader dbus-object-signal-handlers)))
+   (signal-handlers :initform (make-hash-table :test 'equal) :reader dbus-object-signal-handlers)
+   (properties      :initform (make-hash-table :test 'equal) :reader dbus-object-properties)))
 
 (defgeneric dbus-object-handler-lookup-table (message object))
 
@@ -81,7 +83,18 @@
     (dolist (option options)
       (when (and (consp option) (eq (car option) :path))
         (setf path (cadr option))))
-    `(register-dbus-object ',name ,path)))
+    `(prog1
+       (register-dbus-object ',name ,path)
+       (define-dbus-method (,name get) ((interface :string) (property :string)) (:variant)
+         (:interface "org.freedesktop.DBus.Properties")
+         (let* ((obj (find-dbus-object ',name))
+                (value (gethash (cons interface property) (dbus-object-properties obj)))
+                (type-to-dbus (typecase value
+                                ((or null boolean) "b")
+                                (string "s")
+                                (integer "t")
+                                (float "d"))))
+           (list type-to-dbus value))))))
 
 ;;; Define handlers
 
@@ -191,6 +204,13 @@ sans dashes."
                                    ',parameter-types
                                    (lambda (,@parameter-names)
                                      ,@body))))
+
+(defmacro define-dbus-property ((object-name property-name) &body body)
+  `(setf
+     (gethash
+       ',(cons (getf (car body) :interface) (stringify-lisp-name (symbol-name property-name)))
+       (dbus-object-properties (find-dbus-object ',object-name)))
+     ',(cadr body)))
 
 ;;; Publishing objects
 
