@@ -159,4 +159,8 @@
    #:define-dbus-object
    #:define-dbus-method
    #:define-dbus-signal-handler
-   #:publish-objects))
+   #:publish-objects
+   #:dbus-object
+   #:child-object-mixin
+   #:introspection-mixin
+   #:introspection-document))
