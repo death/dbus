@@ -52,7 +52,7 @@
 
 (defmethod register-child-object ((child-object child-object-mixin)
 				  (parent-object child-object-mixin))
-  (push (dbus-object-name child-object) (dbus-object-child-object-names parent-object))
+  (pushnew (dbus-object-name child-object) (dbus-object-child-object-names parent-object))
   (setf (dbus-object-parent-object-name child-object) (dbus-object-name parent-object)))
 
 (defclass introspection-mixin () ())
