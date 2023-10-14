@@ -237,12 +237,6 @@ sans dashes."
                                      ,@body))))
 
 ;;; introspection functions
-(defun type-to-code (type)
-  "Return the code for a type"
-  (case type
-    (:string "s")
-    (:int32 "i")
-    (:uint32 "u")))
 
 (defgeneric output-introspection-fragment (thing)
   (:documentation "Return the introspection element for a thing."))
@@ -268,7 +262,7 @@ sans dashes."
              (cxml:attribute "direction" dir)
              (if name
 		 (cxml:attribute "name" (stringify-lisp-name name)))
-             (cxml:attribute "type" (type-to-code type)))))
+             (cxml:attribute "type" (signature (list type))))))
       (loop for type in (handler-input-signature thing)
             do (one-arg nil "in" type))
       (loop for type in (handler-output-signature thing)
@@ -282,8 +276,7 @@ sans dashes."
            (cxml:with-element "arg"
              (if name
 		 (cxml:attribute "name" (stringify-lisp-name name)))
-             (cxml:attribute "type"
-			     (type-to-code type)))))
+             (cxml:attribute "type" (signature (list type))))))
       (loop for type in (handler-input-signature thing)
             do (one-arg nil type)))))
 
