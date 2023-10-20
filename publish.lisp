@@ -10,6 +10,10 @@
         #:dbus/connections
         #:dbus/types)
   (:import-from #:iolib #:event-dispatch)
+  (:import-from #:cxml
+		#:with-element #:attribute #:with-xml-output
+		#:doctype #:make-string-sink)
+  (:import-from #:uiop #:ensure-directory-pathname)
   (:export
    #:*all-dbus-objects*
    #:define-dbus-object
@@ -106,13 +110,13 @@
       (when (and (consp option) (eq (car option) :class))
         (setf class (cadr option))))
     `(progn
-      (if ',parent
-		(register-child-object (find-dbus-object ',name)
-				       (find-dbus-object ',parent)))
-      (if (subtypep ',class 'introspection-mixin)
-	  (define-dbus-method (,name introspect) () (:string)
-	    (:interface "org.freedesktop.DBus.Introspectable")
-	    (introspection-document (find-dbus-object ',name)))))))
+       (if ',parent
+	   (register-child-object (find-dbus-object ',name)
+				  (find-dbus-object ',parent)))
+       (if (subtypep ',class 'introspection-mixin)
+	   (define-dbus-method (,name introspect) () (:string)
+			       (:interface "org.freedesktop.DBus.Introspectable")
+			       (introspection-document (find-dbus-object ',name)))))))
 
 (defmacro define-dbus-object (name &body options)
   (let ((path nil) (class nil))
@@ -244,48 +248,48 @@ sans dashes."
 (defmethod relative-path-string ((object child-object-mixin))
   (enough-namestring
    (dbus-object-path object)
-   (uiop:ensure-directory-pathname
+   (ensure-directory-pathname
     (dbus-object-path
      (find-dbus-object (dbus-object-parent-object-name object))))))
 
 (defmethod output-introspection-fragment ((thing child-object-mixin))
-  (cxml:with-element "node"
-    (cxml:attribute "name"
-		    (relative-path-string thing))))
+  (with-element "node"
+    (attribute "name"
+	       (relative-path-string thing))))
 
 (defmethod output-introspection-fragment ((thing method-handler))
-  (cxml:with-element "method"
-    (cxml:attribute "name" (handler-name thing))
+  (with-element "method"
+    (attribute "name" (handler-name thing))
     (flet
 	((one-arg (name dir type)
-           (cxml:with-element "arg"
-             (cxml:attribute "direction" dir)
+           (with-element "arg"
+             (attribute "direction" dir)
              (if name
-		 (cxml:attribute "name" (stringify-lisp-name name)))
-             (cxml:attribute "type" (signature (list type))))))
+		 (attribute "name" (stringify-lisp-name name)))
+             (attribute "type" (signature (list type))))))
       (loop for type in (handler-input-signature thing)
             do (one-arg nil "in" type))
       (loop for type in (handler-output-signature thing)
             do (one-arg nil "out" type)))))
 
 (defmethod output-introspection-fragment ((thing signal-handler))
-  (cxml:with-element "signal"
-    (cxml:attribute "name" (handler-name thing))
+  (with-element "signal"
+    (attribute "name" (handler-name thing))
     (flet
 	((one-arg (name type)
-           (cxml:with-element "arg"
+           (with-element "arg"
              (if name
-		 (cxml:attribute "name" (stringify-lisp-name name)))
-             (cxml:attribute "type" (signature (list type))))))
+		 (attribute "name" (stringify-lisp-name name)))
+             (attribute "type" (signature (list type))))))
       (loop for type in (handler-input-signature thing)
             do (one-arg nil type)))))
 
 (defmethod collect-handlers-by-interface ((object dbus-object))
   (let ((result (make-hash-table :test #'equal)))
     (loop for m-h being the hash-values of (dbus-object-method-handlers object)
-        do (push m-h (gethash (handler-interface m-h) result ())))
+          do (push m-h (gethash (handler-interface m-h) result ())))
     (loop for s-h being the hash-values of (dbus-object-signal-handlers object)
-        do (push s-h (gethash (handler-interface s-h) result ())))
+          do (push s-h (gethash (handler-interface s-h) result ())))
     result))
 
 (defgeneric introspection-document (object)
@@ -293,35 +297,35 @@ sans dashes."
 a particular DBUS  object."))
 
 (defmethod introspection-document ((object dbus-object))
-  (cxml:with-xml-output (cxml:make-string-sink)
-      (cxml:doctype "node" 
-                    "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
-                    "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd")
-      (cxml:with-element "node"
-	(let ((interfaces-handlers (collect-handlers-by-interface object)))
-	  (loop for interface-name being the hash-keys of interfaces-handlers
-		  using (hash-value handlers)
-		do (cxml:with-element "interface"
-                     (cxml:attribute "name" interface-name)
-                     (loop for h in handlers
-                           do (output-introspection-fragment h))))))))
+  (with-xml-output (make-string-sink)
+    (doctype "node"
+             "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+             "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd")
+    (with-element "node"
+      (let ((interfaces-handlers (collect-handlers-by-interface object)))
+	(loop for interface-name being the hash-keys of interfaces-handlers
+	      using (hash-value handlers)
+	      do (with-element "interface"
+                   (attribute "name" interface-name)
+                   (loop for h in handlers
+                         do (output-introspection-fragment h))))))))
 
 (defmethod introspection-document ((object child-object-mixin))
-  (cxml:with-xml-output (cxml:make-string-sink)
-      (cxml:doctype "node"
-                    "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
-                    "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd")
-      (cxml:with-element "node"
-	(let ((interfaces-handlers (collect-handlers-by-interface object))
-	      (child-object-names (dbus-object-child-object-names object)))
-	  (loop for interface-name being the hash-keys of interfaces-handlers
-		  using (hash-value handlers)
-		do (cxml:with-element "interface"
-                     (cxml:attribute "name" interface-name)
-                     (loop for h in handlers
-                           do (output-introspection-fragment h))))
-	  (dolist (child-object-name child-object-names)
-	    (output-introspection-fragment (find-dbus-object child-object-name)))))))
+  (with-xml-output (make-string-sink)
+    (doctype "node"
+             "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+             "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd")
+    (with-element "node"
+      (let ((interfaces-handlers (collect-handlers-by-interface object))
+	    (child-object-names (dbus-object-child-object-names object)))
+	(loop for interface-name being the hash-keys of interfaces-handlers
+	      using (hash-value handlers)
+	      do (with-element "interface"
+                   (attribute "name" interface-name)
+                   (loop for h in handlers
+                         do (output-introspection-fragment h))))
+	(dolist (child-object-name child-object-names)
+	  (output-introspection-fragment (find-dbus-object child-object-name)))))))
 
 ;;; Publishing objects
 
