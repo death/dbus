@@ -11,8 +11,8 @@
         #:dbus/types)
   (:import-from #:iolib #:event-dispatch)
   (:import-from #:cxml
-		#:with-element #:attribute #:with-xml-output
-		#:doctype #:make-string-sink)
+                #:with-element #:attribute #:with-xml-output
+                #:doctype #:make-string-sink)
   (:import-from #:uiop #:ensure-directory-pathname)
   (:export
    #:*all-dbus-objects*
@@ -50,12 +50,12 @@
 
 (defclass child-object-mixin ()
   ((child-object-names :initarg :child-object-names :initform '()
-		       :accessor dbus-object-child-object-names)
+                       :accessor dbus-object-child-object-names)
    (parent-object-name :initarg :parent-object-name
-		       :accessor dbus-object-parent-object-name)))
+                       :accessor dbus-object-parent-object-name)))
 
 (defmethod register-child-object ((child-object child-object-mixin)
-				  (parent-object child-object-mixin))
+                                  (parent-object child-object-mixin))
   (pushnew (dbus-object-name child-object) (dbus-object-child-object-names parent-object))
   (setf (dbus-object-parent-object-name child-object) (dbus-object-name parent-object)))
 
@@ -83,12 +83,12 @@
       ;; path.
       (setf (dbus-object-path (find-dbus-object name)) path)
       (if dbus-object-sub-class
-	  (setf (find-dbus-object name)
-		(make-instance dbus-object-sub-class
-			       :name name
-			       :path path))
-	  (setf (find-dbus-object name)
-		(make-instance 'dbus-object
+          (setf (find-dbus-object name)
+                (make-instance dbus-object-sub-class
+                               :name name
+                               :path path))
+          (setf (find-dbus-object name)
+                (make-instance 'dbus-object
                                :name name
                                :path path))))
   name)
@@ -111,12 +111,12 @@
         (setf class (cadr option))))
     `(progn
        (if ',parent
-	   (register-child-object (find-dbus-object ',name)
-				  (find-dbus-object ',parent)))
+           (register-child-object (find-dbus-object ',name)
+                                  (find-dbus-object ',parent)))
        (if (subtypep ',class 'introspection-mixin)
-	   (define-dbus-method (,name introspect) () (:string)
-			       (:interface "org.freedesktop.DBus.Introspectable")
-			       (introspection-document (find-dbus-object ',name)))))))
+           (define-dbus-method (,name introspect) () (:string)
+                               (:interface "org.freedesktop.DBus.Introspectable")
+                               (introspection-document (find-dbus-object ',name)))))))
 
 (defmacro define-dbus-object (name &body options)
   (let ((path nil) (class nil))
@@ -126,10 +126,10 @@
       (when (and (consp option) (eq (car option) :class))
         (setf class (cadr option))))
     (if class
-	`(prog1
-	     (register-dbus-object ',name ,path ',class)
-	   (initialize-mixined-instance ,name ,options))
-	`(register-dbus-object ',name ,path))))
+        `(prog1
+             (register-dbus-object ',name ,path ',class)
+           (initialize-mixined-instance ,name ,options))
+        `(register-dbus-object ',name ,path))))
 
 ;;; Define handlers
 
@@ -255,17 +255,17 @@ sans dashes."
 (defmethod output-introspection-fragment ((thing child-object-mixin))
   (with-element "node"
     (attribute "name"
-	       (relative-path-string thing))))
+               (relative-path-string thing))))
 
 (defmethod output-introspection-fragment ((thing method-handler))
   (with-element "method"
     (attribute "name" (handler-name thing))
     (flet
-	((one-arg (name dir type)
+        ((one-arg (name dir type)
            (with-element "arg"
              (attribute "direction" dir)
              (if name
-		 (attribute "name" (stringify-lisp-name name)))
+                 (attribute "name" (stringify-lisp-name name)))
              (attribute "type" (signature (list type))))))
       (loop for type in (handler-input-signature thing)
             do (one-arg nil "in" type))
@@ -276,10 +276,10 @@ sans dashes."
   (with-element "signal"
     (attribute "name" (handler-name thing))
     (flet
-	((one-arg (name type)
+        ((one-arg (name type)
            (with-element "arg"
              (if name
-		 (attribute "name" (stringify-lisp-name name)))
+                 (attribute "name" (stringify-lisp-name name)))
              (attribute "type" (signature (list type))))))
       (loop for type in (handler-input-signature thing)
             do (one-arg nil type)))))
@@ -303,9 +303,9 @@ a particular DBUS  object."))
              "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd")
     (with-element "node"
       (let ((interfaces-handlers (collect-handlers-by-interface object)))
-	(loop for interface-name being the hash-keys of interfaces-handlers
-	      using (hash-value handlers)
-	      do (with-element "interface"
+        (loop for interface-name being the hash-keys of interfaces-handlers
+              using (hash-value handlers)
+              do (with-element "interface"
                    (attribute "name" interface-name)
                    (loop for h in handlers
                          do (output-introspection-fragment h))))))))
@@ -317,15 +317,15 @@ a particular DBUS  object."))
              "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd")
     (with-element "node"
       (let ((interfaces-handlers (collect-handlers-by-interface object))
-	    (child-object-names (dbus-object-child-object-names object)))
-	(loop for interface-name being the hash-keys of interfaces-handlers
-	      using (hash-value handlers)
-	      do (with-element "interface"
+            (child-object-names (dbus-object-child-object-names object)))
+        (loop for interface-name being the hash-keys of interfaces-handlers
+              using (hash-value handlers)
+              do (with-element "interface"
                    (attribute "name" interface-name)
                    (loop for h in handlers
                          do (output-introspection-fragment h))))
-	(dolist (child-object-name child-object-names)
-	  (output-introspection-fragment (find-dbus-object child-object-name)))))))
+        (dolist (child-object-name child-object-names)
+          (output-introspection-fragment (find-dbus-object child-object-name)))))))
 
 ;;; Publishing objects
 
