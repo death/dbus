@@ -19,11 +19,7 @@
    #:define-dbus-object
    #:define-dbus-method
    #:define-dbus-signal-handler
-   #:publish-objects
-   #:dbus-object
-   #:child-object-mixin
-   #:introspection-mixin
-   #:introspection-document))
+   #:publish-objects))
 
 (in-package #:dbus/publish)
 
@@ -34,7 +30,7 @@
 
 (defvar *all-dbus-objects* '())
 
-(defclass dbus-object ()
+(defclass dbus-object (introspection-mixin child-object-mixin)
   ((name :initarg :name :reader dbus-object-name)
    (path :initarg :path :accessor dbus-object-path)
    (method-handlers :initform (make-hash-table :test 'equal) :reader dbus-object-method-handlers)
@@ -75,22 +71,17 @@
          (pushnew name *all-dbus-objects*)
          (setf (get name 'dbus-object) new-value))))
 
-(defun register-dbus-object (name path &optional dbus-object-sub-class)
+(defun register-dbus-object (name path)
   (check-type name symbol)
   (check-type path string)
   (if (find-dbus-object name)
       ;; If we already have an object with that name, just update its
       ;; path.
       (setf (dbus-object-path (find-dbus-object name)) path)
-      (if dbus-object-sub-class
-          (setf (find-dbus-object name)
-                (make-instance dbus-object-sub-class
-                               :name name
-                               :path path))
-          (setf (find-dbus-object name)
-                (make-instance 'dbus-object
-                               :name name
-                               :path path))))
+      (setf (find-dbus-object name)
+            (make-instance 'dbus-object
+                           :name name
+                           :path path)))
   name)
 
 (defun require-dbus-object (name)
@@ -102,34 +93,27 @@
              (shiftf name object (find-dbus-object object)))
         finally (return (values object (dbus-object-name object)))))
 
-(defmacro initialize-mixined-instance (name options)
+(defmacro initialize-dbus-object-instance (name options)
   (let ((parent nil) (class nil))
     (dolist (option options)
       (when (and (consp option) (eq (car option) :parent))
-        (setf parent (cadr option)))
-      (when (and (consp option) (eq (car option) :class))
-        (setf class (cadr option))))
+        (setf parent (cadr option))))
     `(progn
        (if ',parent
            (register-child-object (find-dbus-object ',name)
                                   (find-dbus-object ',parent)))
-       (if (subtypep ',class 'introspection-mixin)
-           (define-dbus-method (,name introspect) () (:string)
-                               (:interface "org.freedesktop.DBus.Introspectable")
-                               (introspection-document (find-dbus-object ',name)))))))
+       (define-dbus-method (,name introspect) () (:string)
+         (:interface "org.freedesktop.DBus.Introspectable")
+         (introspection-document (find-dbus-object ',name))))))
 
 (defmacro define-dbus-object (name &body options)
   (let ((path nil) (class nil))
     (dolist (option options)
       (when (and (consp option) (eq (car option) :path))
-        (setf path (cadr option)))
-      (when (and (consp option) (eq (car option) :class))
-        (setf class (cadr option))))
-    (if class
-        `(prog1
-             (register-dbus-object ',name ,path ',class)
-           (initialize-mixined-instance ,name ,options))
-        `(register-dbus-object ',name ,path))))
+        (setf path (cadr option))))
+    `(prog1
+         (register-dbus-object ',name ,path)
+       (initialize-dbus-object-instance ,name ,options))))
 
 ;;; Define handlers
 
@@ -295,20 +279,6 @@ sans dashes."
 (defgeneric introspection-document (object)
   (:documentation "Return the introspection document string for
 a particular DBUS  object."))
-
-(defmethod introspection-document ((object dbus-object))
-  (with-xml-output (make-string-sink)
-    (doctype "node"
-             "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
-             "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd")
-    (with-element "node"
-      (let ((interfaces-handlers (collect-handlers-by-interface object)))
-        (loop for interface-name being the hash-keys of interfaces-handlers
-              using (hash-value handlers)
-              do (with-element "interface"
-                   (attribute "name" interface-name)
-                   (loop for h in handlers
-                         do (output-introspection-fragment h))))))))
 
 (defmethod introspection-document ((object child-object-mixin))
   (with-xml-output (make-string-sink)
