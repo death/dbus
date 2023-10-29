@@ -93,7 +93,7 @@
         finally (return (values object (dbus-object-name object)))))
 
 (defmacro initialize-dbus-object-instance (name options)
-  (let ((parent nil) (class nil))
+  (let ((parent nil))
     (dolist (option options)
       (when (and (consp option) (eq (car option) :parent))
         (setf parent (cadr option))))
@@ -106,7 +106,7 @@
          (introspection-document (find-dbus-object ',name))))))
 
 (defmacro define-dbus-object (name &body options)
-  (let ((path nil) (class nil))
+  (let ((path nil))
     (dolist (option options)
       (when (and (consp option) (eq (car option) :path))
         (setf path (cadr option))))
