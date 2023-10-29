@@ -13,7 +13,6 @@
   (:import-from #:cxml
                 #:with-element #:attribute #:with-xml-output
                 #:doctype #:make-string-sink)
-  (:import-from #:uiop #:ensure-directory-pathname)
   (:export
    #:*all-dbus-objects*
    #:define-dbus-object
@@ -230,11 +229,17 @@ sans dashes."
   (:documentation "Return the introspection element for a thing."))
 
 (defmethod relative-path-string ((object child-object-mixin))
-  (enough-namestring
-   (dbus-object-path object)
-   (ensure-directory-pathname
-    (dbus-object-path
-     (find-dbus-object (dbus-object-parent-object-name object))))))
+  (let* ((object-path (dbus-object-path object))
+	 (parent-object-path
+	   (dbus-object-path
+	    (find-dbus-object (dbus-object-parent-object-name object))))
+	 (len (length parent-object-path)))
+    (if (string= parent-object-path (subseq object-path 0 len))
+	(if (string= "/" parent-object-path)
+	    (subseq object-path 1)
+	    (subseq object-path (+ len 1)))
+	(error (format nil "\"~a\" isn't a child object path of \"~a\""
+		       object-path parent-object-path)))))
 
 (defmethod output-introspection-fragment ((thing child-object-mixin))
   (with-element "node"
