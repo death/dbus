@@ -233,11 +233,13 @@ sans dashes."
          (parent-object-path
            (dbus-object-path
             (find-dbus-object (dbus-object-parent-object-name object))))
-         (len (length parent-object-path)))
-    (if (string= parent-object-path (subseq object-path 0 len))
-        (if (string= "/" parent-object-path)
-            (subseq object-path 1)
-            (subseq object-path (+ len 1)))
+         (parent-object-directory
+           (if (string= "/" parent-object-path)
+               parent-object-path
+               (concatenate 'string parent-object-path "/")))
+         (len (length parent-object-directory)))
+    (if (string= parent-object-directory (subseq object-path 0 len))
+        (subseq object-path len)
         (error (format nil "\"~a\" isn't a child object path of \"~a\""
                        object-path parent-object-path)))))
 
