@@ -70,17 +70,22 @@
          (pushnew name *all-dbus-objects*)
          (setf (get name 'dbus-object) new-value))))
 
-(defun register-dbus-object (name path)
+(defun register-dbus-object (name path &optional dbus-object-sub-class)
   (check-type name symbol)
   (check-type path string)
   (if (find-dbus-object name)
       ;; If we already have an object with that name, just update its
       ;; path.
       (setf (dbus-object-path (find-dbus-object name)) path)
-      (setf (find-dbus-object name)
-            (make-instance 'dbus-object
-                           :name name
-                           :path path)))
+      (if dbus-object-sub-class
+          (setf (find-dbus-object name)
+                (make-instance dbus-object-sub-class
+                               :name name
+                               :path path))
+          (setf (find-dbus-object name)
+                (make-instance 'dbus-object
+                               :name name
+                               :path path))))
   name)
 
 (defun require-dbus-object (name)
@@ -92,27 +97,32 @@
              (shiftf name object (find-dbus-object object)))
         finally (return (values object (dbus-object-name object)))))
 
-(defmacro initialize-dbus-object-instance (name options)
-  (let ((parent nil))
+(defmacro initialize-mixined-instance (name &body options)
+  (let ((parent nil) (class 'dbus-object))
     (dolist (option options)
       (when (and (consp option) (eq (car option) :parent))
-        (setf parent (cadr option))))
+        (setf parent (cadr option)))
+      (when (and (consp option) (eq (car option) :class))
+        (setf class (cadr option))))
     `(progn
        (if ',parent
            (register-child-object (find-dbus-object ',name)
                                   (find-dbus-object ',parent)))
-       (define-dbus-method (,name introspect) () (:string)
-         (:interface "org.freedesktop.DBus.Introspectable")
-         (introspection-document (find-dbus-object ',name))))))
+       (if (subtypep ',class 'introspection-mixin)
+           (define-dbus-method (,name introspect) () (:string)
+                               (:interface "org.freedesktop.DBus.Introspectable")
+                               (introspection-document (find-dbus-object ',name)))))))
 
 (defmacro define-dbus-object (name &body options)
-  (let ((path nil))
+  (let ((path nil) (class 'dbus-object))
     (dolist (option options)
       (when (and (consp option) (eq (car option) :path))
-        (setf path (cadr option))))
+        (setf path (cadr option)))
+      (when (and (consp option) (eq (car option) :class))
+        (setf class (cadr option))))
     `(prog1
-         (register-dbus-object ',name ,path)
-       (initialize-dbus-object-instance ,name ,options))))
+         (register-dbus-object ',name ,path ',class)
+       (initialize-mixined-instance ,name ,@options))))
 
 ;;; Define handlers
 
