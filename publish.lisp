@@ -10,6 +10,9 @@
         #:dbus/connections
         #:dbus/types)
   (:import-from #:iolib #:event-dispatch)
+  (:import-from #:cxml
+                #:with-element #:attribute #:with-xml-output
+                #:doctype #:make-string-sink)
   (:export
    #:*all-dbus-objects*
    #:define-dbus-object
@@ -26,7 +29,7 @@
 
 (defvar *all-dbus-objects* '())
 
-(defclass dbus-object ()
+(defclass dbus-object (introspection-mixin child-object-mixin)
   ((name :initarg :name :reader dbus-object-name)
    (path :initarg :path :accessor dbus-object-path)
    (method-handlers :initform (make-hash-table :test 'equal) :reader dbus-object-method-handlers)
@@ -39,6 +42,19 @@
 
 (defmethod dbus-object-handler-lookup-table ((message method-call-message) (object dbus-object))
   (dbus-object-method-handlers object))
+
+(defclass child-object-mixin ()
+  ((child-object-names :initarg :child-object-names :initform '()
+                       :accessor dbus-object-child-object-names)
+   (parent-object-name :initarg :parent-object-name
+                       :accessor dbus-object-parent-object-name)))
+
+(defmethod register-child-object ((child-object child-object-mixin)
+                                  (parent-object child-object-mixin))
+  (pushnew (dbus-object-name child-object) (dbus-object-child-object-names parent-object))
+  (setf (dbus-object-parent-object-name child-object) (dbus-object-name parent-object)))
+
+(defclass introspection-mixin () ())
 
 (defun find-dbus-object (name)
   (check-type name symbol)
@@ -54,17 +70,22 @@
          (pushnew name *all-dbus-objects*)
          (setf (get name 'dbus-object) new-value))))
 
-(defun register-dbus-object (name path)
+(defun register-dbus-object (name path &optional dbus-object-sub-class)
   (check-type name symbol)
   (check-type path string)
   (if (find-dbus-object name)
       ;; If we already have an object with that name, just update its
       ;; path.
       (setf (dbus-object-path (find-dbus-object name)) path)
-      (setf (find-dbus-object name)
-            (make-instance 'dbus-object
-                           :name name
-                           :path path)))
+      (if dbus-object-sub-class
+          (setf (find-dbus-object name)
+                (make-instance dbus-object-sub-class
+                               :name name
+                               :path path))
+          (setf (find-dbus-object name)
+                (make-instance 'dbus-object
+                               :name name
+                               :path path))))
   name)
 
 (defun require-dbus-object (name)
@@ -76,12 +97,32 @@
              (shiftf name object (find-dbus-object object)))
         finally (return (values object (dbus-object-name object)))))
 
+(defmacro initialize-mixined-instance (name &body options)
+  (let ((parent nil) (class 'dbus-object))
+    (dolist (option options)
+      (when (and (consp option) (eq (car option) :parent))
+        (setf parent (cadr option)))
+      (when (and (consp option) (eq (car option) :class))
+        (setf class (cadr option))))
+    `(progn
+       (if ',parent
+           (register-child-object (find-dbus-object ',name)
+                                  (find-dbus-object ',parent)))
+       (if (subtypep ',class 'introspection-mixin)
+           (define-dbus-method (,name introspect) () (:string)
+                               (:interface "org.freedesktop.DBus.Introspectable")
+                               (introspection-document (find-dbus-object ',name)))))))
+
 (defmacro define-dbus-object (name &body options)
-  (let ((path nil))
+  (let ((path nil) (class 'dbus-object))
     (dolist (option options)
       (when (and (consp option) (eq (car option) :path))
-        (setf path (cadr option))))
-    `(register-dbus-object ',name ,path)))
+        (setf path (cadr option)))
+      (when (and (consp option) (eq (car option) :class))
+        (setf class (cadr option))))
+    `(prog1
+         (register-dbus-object ',name ,path ',class)
+       (initialize-mixined-instance ,name ,@options))))
 
 ;;; Define handlers
 
@@ -191,6 +232,87 @@ sans dashes."
                                    ',parameter-types
                                    (lambda (,@parameter-names)
                                      ,@body))))
+
+;;; introspection functions
+
+(defgeneric output-introspection-fragment (thing)
+  (:documentation "Return the introspection element for a thing."))
+
+(defmethod relative-path-string ((object child-object-mixin))
+  (let* ((object-path (dbus-object-path object))
+         (parent-object-path
+           (dbus-object-path
+            (find-dbus-object (dbus-object-parent-object-name object))))
+         (parent-object-directory
+           (if (string= "/" parent-object-path)
+               parent-object-path
+               (concatenate 'string parent-object-path "/")))
+         (len (length parent-object-directory)))
+    (if (string= parent-object-directory (subseq object-path 0 len))
+        (subseq object-path len)
+        (error (format nil "\"~a\" isn't a child object path of \"~a\""
+                       object-path parent-object-path)))))
+
+(defmethod output-introspection-fragment ((thing child-object-mixin))
+  (with-element "node"
+    (attribute "name"
+               (relative-path-string thing))))
+
+(defmethod output-introspection-fragment ((thing method-handler))
+  (with-element "method"
+    (attribute "name" (handler-name thing))
+    (flet
+        ((one-arg (name dir type)
+           (with-element "arg"
+             (attribute "direction" dir)
+             (if name
+                 (attribute "name" (stringify-lisp-name name)))
+             (attribute "type" (signature (list type))))))
+      (loop for type in (handler-input-signature thing)
+            do (one-arg nil "in" type))
+      (loop for type in (handler-output-signature thing)
+            do (one-arg nil "out" type)))))
+
+(defmethod output-introspection-fragment ((thing signal-handler))
+  (with-element "signal"
+    (attribute "name" (handler-name thing))
+    (flet
+        ((one-arg (name type)
+           (with-element "arg"
+             (if name
+                 (attribute "name" (stringify-lisp-name name)))
+             (attribute "type" (signature (list type))))))
+      (loop for type in (handler-input-signature thing)
+            do (one-arg nil type)))))
+
+(defmethod collect-handlers-by-interface ((object dbus-object))
+  (let ((result (make-hash-table :test #'equal)))
+    (loop for m-h being the hash-values of (dbus-object-method-handlers object)
+          do (push m-h (gethash (handler-interface m-h) result ())))
+    (loop for s-h being the hash-values of (dbus-object-signal-handlers object)
+          do (push s-h (gethash (handler-interface s-h) result ())))
+    result))
+
+(defgeneric introspection-document (object)
+  (:documentation "Return the introspection document string for
+a particular DBUS  object."))
+
+(defmethod introspection-document ((object child-object-mixin))
+  (with-xml-output (make-string-sink)
+    (doctype "node"
+             "-//freedesktop//DTD D-BUS Object Introspection 1.0//EN"
+             "http://www.freedesktop.org/standards/dbus/1.0/introspect.dtd")
+    (with-element "node"
+      (let ((interfaces-handlers (collect-handlers-by-interface object))
+            (child-object-names (dbus-object-child-object-names object)))
+        (loop for interface-name being the hash-keys of interfaces-handlers
+              using (hash-value handlers)
+              do (with-element "interface"
+                   (attribute "name" interface-name)
+                   (loop for h in handlers
+                         do (output-introspection-fragment h))))
+        (dolist (child-object-name child-object-names)
+          (output-introspection-fragment (find-dbus-object child-object-name)))))))
 
 ;;; Publishing objects
 

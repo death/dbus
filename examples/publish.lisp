@@ -8,8 +8,12 @@
 
 (in-package #:publish-example)
 
+(define-dbus-object root
+  (:path "/"))
+
 (define-dbus-object my-service
-  (:path "/org/adeht/MyService"))
+  (:path "/org/adeht/MyService")
+  (:parent root))
 
 (define-dbus-method (my-service my-method) ((s1 :string) (s2 :string)) (:string)
   (:interface "org.adeht.MyService")
